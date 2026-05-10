@@ -15,11 +15,17 @@ export default function LoginPage() {
         setError('')
         setLoading(true)
         try {
+<<<<<<< HEAD
             const user = await loginWithEmail(email, password)
             console.log('Login exitoso:', user.uid)
             navigate('/dashboard')
         } catch (err: any) {
             console.error('Error login:', err)
+=======
+            await loginWithEmail(email, password)
+            navigate('/dashboard')
+        } catch (err: any) {
+>>>>>>> develop
             setError('Correo o contraseña incorrectos')
         } finally {
             setLoading(false)
