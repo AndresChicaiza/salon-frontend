@@ -28,13 +28,11 @@ export default function LoginPage() {
         setError('')
         setLoading(true)
         try {
-            const user = await loginWithGoogle()
-            // Verificar si ya tiene perfil en Firestore
+            await loginWithGoogle()
             try {
                 await getUserProfile()
                 navigate('/dashboard')
             } catch {
-                // No tiene perfil — es primer acceso con Google
                 navigate('/register/username')
             }
         } catch (err: any) {
