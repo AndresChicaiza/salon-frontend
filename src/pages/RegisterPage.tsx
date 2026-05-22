@@ -24,6 +24,18 @@ export default function RegisterPage() {
         setError('')
         setLoading(true)
         try {
+            if (form.username.length < 4) {
+                setError('El username debe tener al menos 4 caracteres')
+                setLoading(false)
+                return
+            }
+
+            if (!/^[a-zA-Z0-9_]+$/.test(form.username)) {
+                setError('El username solo permite letras, números y guiones bajos')
+                setLoading(false)
+                return
+            }
+
             // Verificar username disponible
             const available = await checkUsername(form.username)
             if (!available) {
@@ -42,13 +54,17 @@ export default function RegisterPage() {
             })
 
             navigate('/dashboard')
-        } catch (err: any) {
-            if (err.code === 'auth/email-already-in-use') {
-                setError('El correo ya está registrado')
-            } else if (err.code === 'auth/weak-password') {
-                setError('La contraseña debe tener al menos 6 caracteres')
+        } catch (err) {
+            if (err && typeof err === 'object' && 'code' in err) {
+                if (err.code === 'auth/email-already-in-use') {
+                    setError('El correo ya está registrado')
+                } else if (err.code === 'auth/weak-password') {
+                    setError('La contraseña debe tener al menos 6 caracteres')
+                } else {
+                    setError((err as {message?: string}).message || 'Error al crear la cuenta')
+                }
             } else {
-                setError(err.message || 'Error al crear la cuenta')
+                setError('Error al crear la cuenta')
             }
         } finally {
             setLoading(false)
@@ -61,7 +77,7 @@ export default function RegisterPage() {
         try {
             await loginWithGoogle()
             navigate('/register/username')
-        } catch (err: any) {
+        } catch {
             setError('Error al registrarse con Google')
         } finally {
             setLoading(false)
@@ -84,8 +100,9 @@ export default function RegisterPage() {
                 <form onSubmit={handleRegister} className="flex flex-col gap-4">
                     <div className="flex gap-3">
                         <div className="flex-1">
-                            <label className="block text-sm text-gray-600 mb-1">Nombres</label>
+                            <label htmlFor="firstName" className="block text-sm text-gray-600 mb-1">Nombres</label>
                             <input
+                                id="firstName"
                                 type="text"
                                 name="firstName"
                                 value={form.firstName}
@@ -96,8 +113,9 @@ export default function RegisterPage() {
                             />
                         </div>
                         <div className="flex-1">
-                            <label className="block text-sm text-gray-600 mb-1">Apellidos</label>
+                            <label htmlFor="lastName" className="block text-sm text-gray-600 mb-1">Apellidos</label>
                             <input
+                                id="lastName"
                                 type="text"
                                 name="lastName"
                                 value={form.lastName}
@@ -110,23 +128,31 @@ export default function RegisterPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">
+                        <label htmlFor="username" className="block text-sm text-gray-600 mb-1">
                             Nombre de usuario
                         </label>
                         <input
+                            id="username"
                             type="text"
                             name="username"
                             value={form.username}
                             onChange={handleChange}
                             placeholder="juanperez123"
                             required
+                            minLength={4}
+                            pattern="^[a-zA-Z0-9_]+$"
+                            title="Solo letras, números y guiones bajos. Mínimo 4 caracteres."
                             className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <p className="text-xs text-gray-400 mt-1">
+                            Solo letras, números y guiones bajos. Mínimo 4 caracteres.
+                        </p>
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Correo</label>
+                        <label htmlFor="email" className="block text-sm text-gray-600 mb-1">Correo</label>
                         <input
+                            id="email"
                             type="email"
                             name="email"
                             value={form.email}
@@ -138,8 +164,9 @@ export default function RegisterPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Contraseña</label>
+                        <label htmlFor="password" className="block text-sm text-gray-600 mb-1">Contraseña</label>
                         <input
+                            id="password"
                             type="password"
                             name="password"
                             value={form.password}

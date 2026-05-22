@@ -40,8 +40,8 @@ export default function ChooseUsernamePage() {
             })
 
             navigate('/dashboard')
-        } catch (err: any) {
-            setError(err.message || 'Error al guardar el username')
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Error al guardar el username')
         } finally {
             setLoading(false)
         }
@@ -65,10 +65,11 @@ export default function ChooseUsernamePage() {
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">
+                        <label htmlFor="username" className="block text-sm text-gray-600 mb-1">
                             Nombre de usuario
                         </label>
                         <input
+                            id="username"
                             type="text"
                             value={username}
                             onChange={e => setUsername(e.target.value)}

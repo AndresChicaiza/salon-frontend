@@ -17,7 +17,7 @@ export default function LoginPage() {
         try {
             await loginWithEmail(email, password)
             navigate('/dashboard')
-        } catch (err: any) {
+        } catch {
             setError('Correo o contraseña incorrectos')
         } finally {
             setLoading(false)
@@ -35,7 +35,7 @@ export default function LoginPage() {
             } catch {
                 navigate('/register/username')
             }
-        } catch (err: any) {
+        } catch {
             setError('Error al iniciar sesión con Google')
         } finally {
             setLoading(false)
@@ -57,8 +57,9 @@ export default function LoginPage() {
 
                 <form onSubmit={handleEmailLogin} className="flex flex-col gap-4">
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Correo</label>
+                        <label htmlFor="email" className="block text-sm text-gray-600 mb-1">Correo</label>
                         <input
+                            id="email"
                             type="email"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
@@ -69,8 +70,9 @@ export default function LoginPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Contraseña</label>
+                        <label htmlFor="password" className="block text-sm text-gray-600 mb-1">Contraseña</label>
                         <input
+                            id="password"
                             type="password"
                             value={password}
                             onChange={e => setPassword(e.target.value)}
