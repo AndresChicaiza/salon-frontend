@@ -1,6 +1,6 @@
 import { getToken } from './authService'
 
-const BASE_URL = import.meta.env.VITE_BACKEND_MAIN_URL
+const BASE_URL = (import.meta.env.VITE_BACKEND_MAIN_URL || 'http://localhost:4000').replace(/\/$/, '')
 
 export interface Room {
     id: string
