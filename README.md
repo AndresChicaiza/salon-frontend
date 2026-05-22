@@ -1,73 +1,79 @@
-# React + TypeScript + Vite
+# 🎓 Salón de Estudio Colaborativo — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación web desarrollada en **React + TypeScript + Vite** que permite a los usuarios registrarse con Google, gestionar su perfil y crear/unirse a salas de estudio colaborativas en tiempo real.
 
-Currently, two official plugins are available:
+## 🚀 Tecnologías
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Herramienta | Uso |
+|---|---|
+| React 19 + TypeScript | Framework principal |
+| Vite | Bundler / Dev Server |
+| React Router DOM | Navegación entre páginas |
+| Firebase SDK (cliente) | Autenticación con Google |
+| Socket.io Client | Conexión en tiempo real |
+| ESLint + jsx-a11y | Calidad de código y accesibilidad |
 
-## React Compiler
+## 📁 Estructura del Proyecto
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── pages/
+│   ├── LandingPage.tsx        # Página de inicio
+│   ├── LoginPage.tsx          # Login con email/password y Google
+│   ├── RegisterPage.tsx       # Registro de cuenta
+│   ├── ChooseUsernamePage.tsx # Selección de username post-login
+│   ├── DashboardPage.tsx      # Lista de salas del usuario
+│   ├── CreateRoomPage.tsx     # Crear nueva sala de estudio
+│   ├── ProfilePage.tsx        # Ver / Editar / Eliminar perfil
+│   └── RoomPage.tsx           # Sala de estudio en tiempo real
+├── services/
+│   ├── authService.ts         # Login, logout, Google Auth
+│   ├── userService.ts         # CRUD de perfil (API)
+│   └── roomService.ts         # Crear y listar salas (API)
+├── context/                   # Contextos de React (Auth)
+├── hooks/                     # Custom hooks
+└── router/                    # Definición de rutas
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## ⚙️ Variables de Entorno
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Crea un archivo `.env.local` en la raíz con las siguientes variables:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_BACKEND_MAIN_URL=http://localhost:4000
+VITE_BACKEND_REALTIME_URL=http://localhost:5000
+
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
 ```
+
+## 🏃 Cómo correr el proyecto
+
+```bash
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
+
+# Verificar lint (accesibilidad + TypeScript)
+npm run lint
+
+# Compilar para producción
+npm run build
+```
+
+El servidor de desarrollo estará disponible en `http://localhost:5173`.
+
+## 🌐 Despliegue en Render
+
+El proyecto incluye `render.yaml` para despliegue automático como **Static Site** en [Render.com](https://render.com).
+
+## 🔗 APIs Relacionadas
+
+- **Backend Principal (REST):** Ver documentación en `salon-backend-main` → Swagger en `/api-docs`
+- **Backend Realtime (WebSocket):** Ver documentación en `salon-backend-realtime`
