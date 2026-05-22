@@ -30,7 +30,9 @@ export default function DashboardPage() {
     useEffect(() => {
         // Conexión inicial al servidor de Sockets para evidencia TS-02
         const socketUrl = (import.meta.env.VITE_BACKEND_REALTIME_URL || 'http://localhost:5000').replace(/\/$/, '')
-        const socket = io(socketUrl)
+        const socket = io(socketUrl, {
+            transports: ['websocket']
+        })
 
         async function loadData() {
             try {

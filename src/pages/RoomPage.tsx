@@ -92,7 +92,9 @@ export default function RoomPage() {
         if (!roomId || loading || error) return
 
         const socketUrl = (import.meta.env.VITE_BACKEND_REALTIME_URL || 'http://localhost:5000').replace(/\/$/, '')
-        const socket = io(socketUrl)
+        const socket = io(socketUrl, {
+            transports: ['websocket']
+        })
         socketRef.current = socket
 
         // On connection, join this room channel
