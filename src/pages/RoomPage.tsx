@@ -46,6 +46,9 @@ export default function RoomPage() {
     // Scroll reference
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
+    // Ref para polling: guarda los IDs de mensajes ya conocidos
+    const knownMessageIdsRef = useRef<Set<string>>(new Set())
+
     // AV controls state (Simulated)
     const [isMicOn, setIsMicOn] = useState(true)
     const [isCamOn, setIsCamOn] = useState(true)
@@ -130,6 +133,31 @@ export default function RoomPage() {
             socket.emit('leave-room', roomId)
             socket.disconnect()
         }
+    }, [roomId])
+
+    // Polling de seguridad: sincroniza mensajes desde Firestore cada 8 segundos
+    // Garantiza que los mensajes siempre aparezcan incluso si el socket falla en Render
+    useEffect(() => {
+        if (!roomId) return
+
+        const syncMessages = async () => {
+            try {
+                const freshMessages = await getRoomMessages(roomId)
+                setMessages(prev => {
+                    // Construir set de IDs actuales
+                    const currentIds = new Set(prev.map(m => m.id))
+                    // Filtrar solo mensajes que aún no están en el estado local
+                    const newOnes = freshMessages.filter((m: ChatMessage) => !currentIds.has(m.id))
+                    if (newOnes.length === 0) return prev
+                    return [...prev, ...newOnes]
+                })
+            } catch {
+                // Silenciar errores de polling para no interrumpir al usuario
+            }
+        }
+
+        const interval = setInterval(syncMessages, 8000)
+        return () => clearInterval(interval)
     }, [roomId])
 
     // Auto-scroll logic
