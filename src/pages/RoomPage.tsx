@@ -87,42 +87,50 @@ export default function RoomPage() {
         loadRoomData()
     }, [roomId])
 
-    // Establish WebSocket Connection
+    // Establish WebSocket Connection — independiente del estado de carga
     useEffect(() => {
-        if (!roomId || loading || error) return
+        if (!roomId) return
 
         const socketUrl = (import.meta.env.VITE_BACKEND_REALTIME_URL || 'http://localhost:5000').replace(/\/$/, '')
         const socket = io(socketUrl, {
-            transports: ['websocket']
+            transports: ['websocket'],
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
         })
         socketRef.current = socket
 
-        // On connection, join this room channel
+        // Unirse a la sala en cuanto la conexión se establece
         socket.on('connect', () => {
-            console.log(`🔌 Conectado al servidor de sockets: ${socket.id}`)
+            console.log(`🔌 Socket conectado: ${socket.id}`)
             socket.emit('join-room', roomId)
         })
 
-        // Listen for new messages from other participants
+        // Volver a unirse si el socket se reconecta (Render puede reiniciar el servidor)
+        socket.on('reconnect', () => {
+            console.log(`🔄 Socket reconectado, volviendo a unirse a sala: ${roomId}`)
+            socket.emit('join-room', roomId)
+        })
+
+        // Recibir mensajes nuevos de otros participantes en tiempo real
         socket.on('new-message', (message: ChatMessage) => {
             setMessages(prev => {
-                // Evitar duplicados por seguridad
                 if (prev.some(m => m.id === message.id)) return prev
                 return [...prev, message]
             })
         })
 
-        // Listen for room updates (if modified by host in another session)
+        // Recibir cambios del nombre de sala (si el anfitrión edita)
         socket.on('room-updated', (updatedData: { name: string }) => {
             setRoom(prev => prev ? { ...prev, name: updatedData.name } : null)
         })
 
-        // Cleanup on unmount or roomId change
+        // Cleanup: salir de la sala y desconectar al salir de la página
         return () => {
             socket.emit('leave-room', roomId)
             socket.disconnect()
         }
-    }, [roomId, loading, error])
+    }, [roomId])
 
     // Auto-scroll logic
     const scrollToBottom = () => {
