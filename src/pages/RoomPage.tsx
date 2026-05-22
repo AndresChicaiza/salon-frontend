@@ -46,9 +46,6 @@ export default function RoomPage() {
     // Scroll reference
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    // Ref para polling: guarda los IDs de mensajes ya conocidos
-    const knownMessageIdsRef = useRef<Set<string>>(new Set())
-
     // AV controls state (Simulated)
     const [isMicOn, setIsMicOn] = useState(true)
     const [isCamOn, setIsCamOn] = useState(true)
