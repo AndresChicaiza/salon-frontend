@@ -34,7 +34,6 @@ export default function ProfilePage() {
     })
 
     const [originalUsername, setOriginalUsername] = useState('')
-    const [originalAvatarUrl, setOriginalAvatarUrl] = useState('')
     const [showAvatarPicker, setShowAvatarPicker] = useState(false)
 
     useEffect(() => {
@@ -51,7 +50,6 @@ export default function ProfilePage() {
                     avatarUrl: user.avatarUrl || '',
                 })
                 setOriginalUsername(user.username || '')
-                setOriginalAvatarUrl(user.avatarUrl || '')
             } catch {
                 setError('Error al cargar el perfil')
             } finally {
