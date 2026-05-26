@@ -3,6 +3,21 @@ import { useNavigate } from 'react-router-dom'
 import { registerWithEmail, loginWithGoogle } from '../services/authService'
 import { createUserProfile, checkUsername } from '../services/userService'
 
+const AVATARS = [
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Jocelyn',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Christian',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Eden',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Bella',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Aidan',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Jack',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Mia',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Leo',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Sam'
+]
+
 export default function RegisterPage() {
     const navigate = useNavigate()
     const [form, setForm] = useState({
@@ -11,6 +26,7 @@ export default function RegisterPage() {
         username: '',
         email: '',
         password: '',
+        avatarUrl: AVATARS[0],
     })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
@@ -51,6 +67,7 @@ export default function RegisterPage() {
             await createUserProfile({
                 username: form.username,
                 displayName: `${form.firstName} ${form.lastName}`,
+                avatarUrl: form.avatarUrl,
             })
 
             navigate('/dashboard')
@@ -124,6 +141,21 @@ export default function RegisterPage() {
                                 required
                                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm text-gray-600 mb-2">Elige un Avatar</label>
+                        <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50/50">
+                            {AVATARS.map((url) => (
+                                <img
+                                    key={url}
+                                    src={url}
+                                    alt="avatar"
+                                    className={`w-14 h-14 mx-auto rounded-full cursor-pointer border-2 transition-all hover:scale-105 ${form.avatarUrl === url ? 'border-blue-500 shadow-md ring-2 ring-blue-200 bg-white' : 'border-transparent hover:bg-white'}`}
+                                    onClick={() => setForm({ ...form, avatarUrl: url })}
+                                />
+                            ))}
                         </div>
                     </div>
 

@@ -2,6 +2,21 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getUserProfile, updateUserProfile, deleteUserAccount, checkUsername } from '../services/userService'
 
+const AVATARS = [
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Jocelyn',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Christian',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Eden',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Bella',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Aidan',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Jack',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Mia',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Leo',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Sam'
+]
+
 export default function ProfilePage() {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
@@ -15,9 +30,12 @@ export default function ProfilePage() {
         lastName: '',
         username: '',
         email: '',
+        avatarUrl: '',
     })
 
     const [originalUsername, setOriginalUsername] = useState('')
+    const [originalAvatarUrl, setOriginalAvatarUrl] = useState('')
+    const [showAvatarPicker, setShowAvatarPicker] = useState(false)
 
     useEffect(() => {
         async function loadProfile() {
@@ -30,8 +48,10 @@ export default function ProfilePage() {
                     lastName: names.slice(1).join(' ') || '',
                     username: user.username || '',
                     email: user.email || '',
+                    avatarUrl: user.avatarUrl || '',
                 })
                 setOriginalUsername(user.username || '')
+                setOriginalAvatarUrl(user.avatarUrl || '')
             } catch {
                 setError('Error al cargar el perfil')
             } finally {
@@ -70,9 +90,11 @@ export default function ProfilePage() {
             await updateUserProfile({
                 username: form.username,
                 displayName: `${form.firstName} ${form.lastName}`.trim(),
+                avatarUrl: form.avatarUrl,
             })
 
             setOriginalUsername(form.username)
+            setOriginalAvatarUrl(form.avatarUrl)
             setSuccess('Perfil actualizado correctamente')
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error al actualizar perfil')
@@ -112,10 +134,14 @@ export default function ProfilePage() {
 
                     {/* Avatar */}
                     <div className="flex flex-col items-center mb-8">
-                        <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 mb-3">
-                            {form.firstName.charAt(0).toUpperCase()}
-                        </div>
-                        <button className="text-sm text-blue-600 hover:underline">
+                        {form.avatarUrl ? (
+                            <img src={form.avatarUrl} alt="avatar" className="w-20 h-20 rounded-full mb-3 shadow-sm border border-gray-200" />
+                        ) : (
+                            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 mb-3">
+                                {form.firstName.charAt(0).toUpperCase()}
+                            </div>
+                        )}
+                        <button onClick={() => setShowAvatarPicker(true)} type="button" className="text-sm text-blue-600 hover:underline">
                             Cambiar avatar
                         </button>
                     </div>
@@ -232,6 +258,37 @@ export default function ProfilePage() {
                                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
                             >
                                 Sí, eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Avatar */}
+            {showAvatarPicker && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl p-6 max-w-md w-full">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Elige un avatar</h3>
+                        <div className="grid grid-cols-4 gap-4 max-h-64 overflow-y-auto p-2">
+                            {AVATARS.map((url) => (
+                                <img
+                                    key={url}
+                                    src={url}
+                                    alt="avatar"
+                                    className={`w-16 h-16 mx-auto rounded-full cursor-pointer border-2 transition-all hover:scale-105 ${form.avatarUrl === url ? 'border-blue-500 shadow-md ring-2 ring-blue-200 bg-white' : 'border-transparent hover:bg-gray-50'}`}
+                                    onClick={() => {
+                                        setForm({ ...form, avatarUrl: url })
+                                        setShowAvatarPicker(false)
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                onClick={() => setShowAvatarPicker(false)}
+                                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50"
+                            >
+                                Cerrar
                             </button>
                         </div>
                     </div>

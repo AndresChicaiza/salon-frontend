@@ -29,6 +29,14 @@ interface UserProfile {
     avatarUrl: string
 }
 
+interface Participant {
+    socketId: string
+    uid: string
+    username: string
+    displayName: string
+    avatarUrl: string
+}
+
 export default function RoomPage() {
     const { roomId } = useParams<{ roomId: string }>()
     const navigate = useNavigate()
@@ -39,6 +47,7 @@ export default function RoomPage() {
     const [inputText, setInputText] = useState('')
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [participants, setParticipants] = useState<Participant[]>([])
 
     // Socket state
     const socketRef = useRef<Socket | null>(null)
@@ -89,7 +98,7 @@ export default function RoomPage() {
 
     // Establish WebSocket Connection — independiente del estado de carga
     useEffect(() => {
-        if (!roomId) return
+        if (!roomId || !profile) return
 
         const socketUrl = (import.meta.env.VITE_BACKEND_REALTIME_URL || 'http://localhost:5000').replace(/\/$/, '')
         const socket = io(socketUrl, {
@@ -103,13 +112,17 @@ export default function RoomPage() {
         // Unirse a la sala en cuanto la conexión se establece
         socket.on('connect', () => {
             console.log(`🔌 Socket conectado: ${socket.id}`)
-            socket.emit('join-room', roomId)
+            socket.emit('join-room', { roomId, user: profile })
         })
 
         // Volver a unirse si el socket se reconecta (Render puede reiniciar el servidor)
         socket.on('reconnect', () => {
             console.log(`🔄 Socket reconectado, volviendo a unirse a sala: ${roomId}`)
-            socket.emit('join-room', roomId)
+            socket.emit('join-room', { roomId, user: profile })
+        })
+
+        socket.on('room-participants', (users: Participant[]) => {
+            setParticipants(users)
         })
 
         // Recibir mensajes nuevos de otros participantes en tiempo real
@@ -130,7 +143,7 @@ export default function RoomPage() {
             socket.emit('leave-room', roomId)
             socket.disconnect()
         }
-    }, [roomId])
+    }, [roomId, profile])
 
     // Polling de seguridad: sincroniza mensajes desde Firestore cada 8 segundos
     // Garantiza que los mensajes siempre aparezcan incluso si el socket falla en Render
@@ -358,35 +371,39 @@ export default function RoomPage() {
                     </div>
 
                     {/* Tarjeta del Compañero Simulado (Estudio Compartido) */}
-                    <div className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6 transition-all hover:border-purple-500/35">
-                        <div className="absolute inset-0 bg-slate-850/30 flex flex-col items-center justify-center">
-                            {/* Simulación de compañero remoto activo */}
-                            <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 p-1">
-                                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                                    <span className="text-teal-400 text-3xl font-extrabold">JS</span>
+                    {participants.filter(p => p.uid !== profile?.uid).map(p => (
+                        <div key={p.socketId} className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6 transition-all hover:border-purple-500/35">
+                            <div className="absolute inset-0 bg-slate-850/30 flex flex-col items-center justify-center">
+                                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 p-1">
+                                    <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
+                                        {p.avatarUrl ? (
+                                            <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-teal-400 text-3xl font-extrabold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <span className="text-slate-400 text-xs mt-4 flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                                    Transmitiendo en vivo
+                                </span>
+                            </div>
+
+                            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+                                <span className="bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-850">
+                                    {p.displayName || p.username}
+                                </span>
+                                <div className="flex gap-1.5">
+                                    <span className="w-8 h-8 rounded-full bg-slate-950/80 border border-slate-805 flex items-center justify-center text-xs text-white">
+                                        🎤
+                                    </span>
+                                    <span className="w-8 h-8 rounded-full bg-slate-950/80 border border-slate-805 flex items-center justify-center text-xs text-white">
+                                        📹
+                                    </span>
                                 </div>
                             </div>
-                            <span className="text-slate-400 text-xs mt-4 flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                                Transmitiendo desde la biblioteca 📚
-                            </span>
                         </div>
-
-                        {/* Indicadores flotantes */}
-                        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
-                            <span className="bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-850">
-                                jsilva_estudios (Estudiante)
-                            </span>
-                            <div className="flex gap-1.5">
-                                <span className="w-8 h-8 rounded-full bg-slate-950/80 border border-slate-805 flex items-center justify-center text-xs text-white">
-                                    🎤
-                                </span>
-                                <span className="w-8 h-8 rounded-full bg-slate-950/80 border border-slate-805 flex items-center justify-center text-xs text-white">
-                                    📹
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                    ))}
 
                 </div>
 
