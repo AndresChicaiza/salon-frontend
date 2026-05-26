@@ -92,7 +92,6 @@ export default function ProfilePage() {
             })
 
             setOriginalUsername(form.username)
-            setOriginalAvatarUrl(form.avatarUrl)
             setSuccess('Perfil actualizado correctamente')
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error al actualizar perfil')
