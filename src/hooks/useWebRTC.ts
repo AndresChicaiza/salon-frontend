@@ -18,10 +18,9 @@ export interface RemoteStream {
 interface UseWebRTCOptions {
     socket: Socket | null
     roomId: string | undefined
-    mySocketId: string | undefined
 }
 
-export function useWebRTC({ socket, roomId, mySocketId }: UseWebRTCOptions) {
+export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null)
     const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([])
     const [isMicOn, setIsMicOn] = useState(true)

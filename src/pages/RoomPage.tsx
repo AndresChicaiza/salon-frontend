@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useWebRTC } from '../hooks/useWebRTC'
@@ -52,7 +52,6 @@ export default function RoomPage() {
 
     // Socket state
     const socketRef = useRef<Socket | null>(null)
-    const [mySocketId, setMySocketId] = useState<string | undefined>(undefined)
 
     // Scroll reference
     const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -72,7 +71,7 @@ export default function RoomPage() {
         toggleMic,
         toggleCam,
         toggleScreenShare,
-    } = useWebRTC({ socket: socketRef.current, roomId, mySocketId })
+    } = useWebRTC({ socket: socketRef.current, roomId })
 
     // Host modals
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -126,14 +125,12 @@ export default function RoomPage() {
         // Unirse a la sala en cuanto la conexión se establece
         socket.on('connect', () => {
             console.log(`🔌 Socket conectado: ${socket.id}`)
-            setMySocketId(socket.id)
             socket.emit('join-room', { roomId, user: profile })
         })
 
         // Volver a unirse si el socket se reconecta (Render puede reiniciar el servidor)
         socket.on('reconnect', () => {
             console.log(`🔄 Socket reconectado, volviendo a unirse a sala: ${roomId}`)
-            setMySocketId(socket.id)
             socket.emit('join-room', { roomId, user: profile })
         })
 
