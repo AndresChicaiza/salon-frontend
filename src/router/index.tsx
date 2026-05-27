@@ -7,6 +7,7 @@ import DashboardPage from '../pages/DashboardPage'
 import ProfilePage from '../pages/ProfilePage'
 import CreateRoomPage from '../pages/CreateRoomPage'
 import RoomPage from '../pages/RoomPage'
+import DocsPage from '../pages/DocsPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import PrivateRoute from '../components/PrivateRoute'
 
@@ -24,5 +25,6 @@ export const router = createBrowserRouter([
             { path: '/room/:roomId', element: <RoomPage /> },
         ],
     },
+    { path: '/docs', element: <DocsPage /> },
     { path: '*', element: <NotFoundPage /> },
 ])
