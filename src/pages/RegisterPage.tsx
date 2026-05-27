@@ -52,6 +52,12 @@ export default function RegisterPage() {
                 return
             }
 
+            if (!form.email.endsWith('@correounivalle.edu.co')) {
+                setError('Solo se permiten correos de la Universidad del Valle (@correounivalle.edu.co)')
+                setLoading(false)
+                return
+            }
+
             // Verificar username disponible
             const available = await checkUsername(form.username)
             if (!available) {
@@ -94,8 +100,8 @@ export default function RegisterPage() {
         try {
             await loginWithGoogle()
             navigate('/register/username')
-        } catch {
-            setError('Error al registrarse con Google')
+        } catch (err: any) {
+            setError(err.message || 'Error al registrarse con Google')
         } finally {
             setLoading(false)
         }
@@ -189,7 +195,9 @@ export default function RegisterPage() {
                             name="email"
                             value={form.email}
                             onChange={handleChange}
-                            placeholder="correo@ejemplo.com"
+                            placeholder="correo@correounivalle.edu.co"
+                            pattern=".*@correounivalle\.edu\.co"
+                            title="Debe ser un correo de @correounivalle.edu.co"
                             required
                             className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />

@@ -24,7 +24,15 @@ export async function loginWithEmail(email: string, password: string) {
 // Login / Registro con Google
 export async function loginWithGoogle() {
     const credential = await signInWithPopup(auth, googleProvider)
-    return credential.user
+    const user = credential.user
+
+    if (user.email && !user.email.endsWith('@correounivalle.edu.co')) {
+        // Intenta borrar la cuenta creada, o al menos cierra sesión
+        await user.delete().catch(() => signOut(auth))
+        throw new Error('Solo se permiten correos @correounivalle.edu.co')
+    }
+
+    return user
 }
 
 // Obtener token del usuario actual

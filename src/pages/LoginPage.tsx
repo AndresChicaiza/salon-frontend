@@ -13,6 +13,12 @@ export default function LoginPage() {
     async function handleEmailLogin(e: React.FormEvent) {
         e.preventDefault()
         setError('')
+        
+        if (!email.endsWith('@correounivalle.edu.co')) {
+            setError('Solo se permiten correos de la Universidad del Valle (@correounivalle.edu.co)')
+            return
+        }
+
         setLoading(true)
         try {
             await loginWithEmail(email, password)
@@ -35,8 +41,8 @@ export default function LoginPage() {
             } catch {
                 navigate('/register/username')
             }
-        } catch {
-            setError('Error al iniciar sesión con Google')
+        } catch (err: any) {
+            setError(err.message || 'Error al iniciar sesión con Google')
         } finally {
             setLoading(false)
         }
@@ -63,7 +69,9 @@ export default function LoginPage() {
                             type="email"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
-                            placeholder="correo@ejemplo.com"
+                            placeholder="correo@correounivalle.edu.co"
+                            pattern=".*@correounivalle\.edu\.co"
+                            title="Debe ser un correo de @correounivalle.edu.co"
                             required
                             className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />

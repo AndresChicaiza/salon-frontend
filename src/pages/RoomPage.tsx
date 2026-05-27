@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useWebRTC } from '../hooks/useWebRTC'
 import { 
     getRoom, 
     updateRoom, 
@@ -51,14 +52,27 @@ export default function RoomPage() {
 
     // Socket state
     const socketRef = useRef<Socket | null>(null)
+    const [mySocketId, setMySocketId] = useState<string | undefined>(undefined)
 
     // Scroll reference
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    // AV controls state (Simulated)
-    const [isMicOn, setIsMicOn] = useState(true)
-    const [isCamOn, setIsCamOn] = useState(true)
-    const [isScreenSharing, setIsScreenSharing] = useState(false)
+    // Video refs
+    const localVideoRef = useRef<HTMLVideoElement>(null)
+
+    // WebRTC hook
+    const {
+        localStream,
+        remoteStreams,
+        isMicOn,
+        isCamOn,
+        isScreenSharing,
+        permissionError,
+        startLocalStream,
+        toggleMic,
+        toggleCam,
+        toggleScreenShare,
+    } = useWebRTC({ socket: socketRef.current, roomId, mySocketId })
 
     // Host modals
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -112,12 +126,14 @@ export default function RoomPage() {
         // Unirse a la sala en cuanto la conexión se establece
         socket.on('connect', () => {
             console.log(`🔌 Socket conectado: ${socket.id}`)
+            setMySocketId(socket.id)
             socket.emit('join-room', { roomId, user: profile })
         })
 
         // Volver a unirse si el socket se reconecta (Render puede reiniciar el servidor)
         socket.on('reconnect', () => {
             console.log(`🔄 Socket reconectado, volviendo a unirse a sala: ${roomId}`)
+            setMySocketId(socket.id)
             socket.emit('join-room', { roomId, user: profile })
         })
 
@@ -138,12 +154,22 @@ export default function RoomPage() {
             setRoom(prev => prev ? { ...prev, name: updatedData.name } : null)
         })
 
+        // Iniciar captura local de cámara/micrófono
+        startLocalStream()
+
         // Cleanup: salir de la sala y desconectar al salir de la página
         return () => {
             socket.emit('leave-room', roomId)
             socket.disconnect()
         }
     }, [roomId, profile])
+
+    // Vincular el stream local al elemento <video> cuando cambie
+    useEffect(() => {
+        if (localVideoRef.current && localStream) {
+            localVideoRef.current.srcObject = localStream
+        }
+    }, [localStream])
 
     // Polling de seguridad: sincroniza mensajes desde Firestore cada 8 segundos
     // Garantiza que los mensajes siempre aparezcan incluso si el socket falla en Render
@@ -272,6 +298,8 @@ export default function RoomPage() {
     }
 
     const isHost = room.createdBy === user?.uid || room.createdBy === profile?.uid
+    const remoteParticipants = participants.filter(p => p.uid !== profile?.uid)
+    const totalVideoSlots = 1 + remoteParticipants.length // 1 local + remotos
 
     return (
         <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
@@ -326,91 +354,112 @@ export default function RoomPage() {
                     </div>
                 </nav>
 
-                {/* Grid de Video/Audio Simulado Premium */}
-                <div className="flex-1 p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6 items-center content-center max-w-5xl mx-auto w-full">
+                {/* Alerta de permisos denegados */}
+                {permissionError && (
+                    <div className="mx-6 mt-4 p-3 bg-rose-950/50 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-medium flex items-center gap-2">
+                        <span className="text-lg">⚠️</span>
+                        <div>
+                            <p className="font-bold">Permisos requeridos</p>
+                            <p>{permissionError}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Grid de Video/Audio WebRTC Dinámico */}
+                <div className={`flex-1 p-6 overflow-y-auto grid gap-4 items-center content-center max-w-6xl mx-auto w-full ${
+                    totalVideoSlots <= 1 ? 'grid-cols-1 max-w-2xl' :
+                    totalVideoSlots === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-5xl' :
+                    totalVideoSlots <= 4 ? 'grid-cols-2 max-w-5xl' :
+                    'grid-cols-2 lg:grid-cols-3 max-w-6xl'
+                }`}>
                     
-                    {/* Tarjeta del Usuario Local */}
-                    <div className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6 group transition-all hover:border-indigo-500/35">
-                        {isCamOn ? (
-                            <div className="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center">
-                                {/* Simulación de cámara activa con un avatar dinámico y animación sutil */}
-                                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-1 animate-pulse">
+                    {/* Tarjeta del Usuario Local — Video Real */}
+                    <div className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl group transition-all hover:border-indigo-500/35">
+                        {localStream && isCamOn ? (
+                            <video
+                                ref={localVideoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="absolute inset-0 w-full h-full object-cover mirror-video"
+                            />
+                        ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-1">
                                     <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
                                         {profile?.avatarUrl ? (
                                             <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                                         ) : (
-                                            <span className="text-white text-3xl font-extrabold">{profile?.displayName?.slice(0, 2).toUpperCase() || 'YO'}</span>
+                                            <span className="text-white text-2xl font-extrabold">{profile?.displayName?.slice(0, 2).toUpperCase() || 'YO'}</span>
                                         )}
                                     </div>
                                 </div>
-                                <span className="text-slate-350 text-xs mt-4 animate-pulse">📷 Cámara Encendida (Transmitiendo...)</span>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center gap-3">
-                                <div className="w-20 h-20 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400 text-2xl font-bold">
-                                    {profile?.displayName?.slice(0, 2).toUpperCase() || 'YO'}
-                                </div>
-                                <span className="text-slate-450 text-xs">Cámara Apagada</span>
+                                <span className="text-slate-450 text-xs mt-3">{localStream ? 'Cámara Apagada' : 'Sin cámara disponible'}</span>
                             </div>
                         )}
 
                         {/* Indicadores flotantes */}
-                        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
-                            <span className="bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-850">
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                            <span className="bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-800">
                                 {profile?.displayName || profile?.username || 'Tú'} (Tú)
                             </span>
                             <div className="flex gap-1.5">
-                                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs backdrop-blur-md border ${isMicOn ? 'bg-indigo-600/80 border-indigo-500/30 text-white' : 'bg-rose-600/80 border-rose-500/30 text-white'}`}>
+                                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] backdrop-blur-md border ${isMicOn ? 'bg-indigo-600/80 border-indigo-500/30 text-white' : 'bg-rose-600/80 border-rose-500/30 text-white'}`}>
                                     {isMicOn ? '🎤' : '🔇'}
                                 </span>
-                                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs backdrop-blur-md border ${isCamOn ? 'bg-indigo-600/80 border-indigo-500/30 text-white' : 'bg-rose-600/80 border-rose-500/30 text-white'}`}>
+                                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] backdrop-blur-md border ${isCamOn ? 'bg-indigo-600/80 border-indigo-500/30 text-white' : 'bg-rose-600/80 border-rose-500/30 text-white'}`}>
                                     {isCamOn ? '📹' : '❌'}
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Tarjeta del Compañero Simulado (Estudio Compartido) */}
-                    {participants.filter(p => p.uid !== profile?.uid).map(p => (
-                        <div key={p.socketId} className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6 transition-all hover:border-purple-500/35">
-                            <div className="absolute inset-0 bg-slate-850/30 flex flex-col items-center justify-center">
-                                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 p-1">
-                                    <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                                        {p.avatarUrl ? (
-                                            <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-teal-400 text-3xl font-extrabold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
-                                        )}
+                    {/* Tarjetas de Compañeros Remotos — Video Real WebRTC */}
+                    {participants.filter(p => p.uid !== profile?.uid).map(p => {
+                        const remote = remoteStreams.find(rs => rs.socketId === p.socketId)
+                        return (
+                            <div key={p.socketId} className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl transition-all hover:border-purple-500/35">
+                                {remote ? (
+                                    <RemoteVideo stream={remote.stream} />
+                                ) : (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                        <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 p-1">
+                                            <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
+                                                {p.avatarUrl ? (
+                                                    <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-teal-400 text-2xl font-extrabold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="text-slate-400 text-xs mt-3 flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                            Conectando...
+                                        </span>
                                     </div>
-                                </div>
-                                <span className="text-slate-400 text-xs mt-4 flex items-center gap-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                                    Transmitiendo en vivo
-                                </span>
-                            </div>
+                                )}
 
-                            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
-                                <span className="bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-850">
-                                    {p.displayName || p.username}
-                                </span>
-                                <div className="flex gap-1.5">
-                                    <span className="w-8 h-8 rounded-full bg-slate-950/80 border border-slate-805 flex items-center justify-center text-xs text-white">
-                                        🎤
+                                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                                    <span className="bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-800">
+                                        {p.displayName || p.username}
                                     </span>
-                                    <span className="w-8 h-8 rounded-full bg-slate-950/80 border border-slate-805 flex items-center justify-center text-xs text-white">
-                                        📹
-                                    </span>
+                                    {remote && (
+                                        <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-500/30">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                            En vivo
+                                        </span>
+                                    )}
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
 
                 </div>
 
-                {/* Controles de Transmisión AV */}
+                {/* Controles de Transmisión AV — Funcionales */}
                 <div className="bg-slate-900 border-t border-slate-800 px-6 py-5 flex items-center justify-center gap-4 shrink-0">
                     <button 
-                        onClick={() => setIsMicOn(!isMicOn)}
+                        onClick={toggleMic}
                         className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${
                             isMicOn 
                             ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-750' 
@@ -421,7 +470,7 @@ export default function RoomPage() {
                     </button>
 
                     <button 
-                        onClick={() => setIsCamOn(!isCamOn)}
+                        onClick={toggleCam}
                         className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${
                             isCamOn 
                             ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-750' 
@@ -432,7 +481,7 @@ export default function RoomPage() {
                     </button>
 
                     <button 
-                        onClick={() => setIsScreenSharing(!isScreenSharing)}
+                        onClick={toggleScreenShare}
                         className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${
                             isScreenSharing 
                             ? 'bg-indigo-950/40 hover:bg-indigo-950/60 text-indigo-400 border-indigo-900/30' 
@@ -616,5 +665,25 @@ export default function RoomPage() {
             )}
 
         </div>
+    )
+}
+
+// Componente separado para video remoto (evita re-renders innecesarios)
+function RemoteVideo({ stream }: { stream: MediaStream }) {
+    const videoRef = useRef<HTMLVideoElement>(null)
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream
+        }
+    }, [stream])
+
+    return (
+        <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+        />
     )
 }
