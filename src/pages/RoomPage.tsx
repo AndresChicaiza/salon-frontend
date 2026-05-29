@@ -271,22 +271,24 @@ export default function RoomPage() {
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen bg-slate-950">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-                <p className="text-slate-400 mt-4 font-medium animate-pulse">Cargando sala de estudio...</p>
+            <div className="flex flex-col items-center justify-center h-screen bg-[#F8F7FA]">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                <p className="text-slate-500 mt-4 font-medium animate-pulse">Cargando sala de estudio...</p>
             </div>
         )
     }
 
     if (error || !room) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-slate-200 px-6 text-center">
-                <div className="text-5xl mb-4">⚠️</div>
+            <div className="flex flex-col items-center justify-center h-screen bg-[#F8F7FA] text-slate-800 px-6 text-center">
+                <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center text-4xl mb-6 shadow-inner">
+                    ⚠️
+                </div>
                 <h3 className="text-xl font-bold mb-2">No se pudo acceder a la sala</h3>
-                <p className="text-slate-400 max-w-md mb-6">{error || 'La sala especificada no existe o no tienes permisos.'}</p>
+                <p className="text-slate-500 max-w-md mb-8">{error || 'La sala especificada no existe o no tienes permisos.'}</p>
                 <button
                     onClick={() => navigate('/dashboard')}
-                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-semibold shadow-lg text-sm transition-all"
+                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-semibold shadow-lg shadow-indigo-600/20 text-sm transition-all"
                 >
                     Volver al Dashboard
                 </button>
@@ -299,61 +301,78 @@ export default function RoomPage() {
     const totalVideoSlots = 1 + remoteParticipants.length // 1 local + remotos
 
     return (
-        <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-[100dvh] bg-[#F8F7FA] text-slate-800 font-sans overflow-hidden">
             
             {/* PANEL PRINCIPAL: Transmisiones Simuladas */}
             <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                 
                 {/* Navbar de la Sala */}
-                <nav className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-650 rounded-xl">
-                            <span className="text-lg">📖</span>
+                <nav className="bg-white border-b border-slate-100 shadow-sm px-4 py-3 lg:px-6 lg:py-4 flex items-center justify-between shrink-0 z-10">
+                    <div className="flex items-center gap-2 lg:gap-3">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-xl font-bold text-lg">
+                            📖
                         </div>
                         <div>
-                            <h2 className="text-base font-bold text-white flex items-center gap-2">
-                                {room.name}
+                            <h2 className="text-sm lg:text-base font-bold text-slate-900 flex items-center gap-2">
+                                <span className="truncate max-w-[120px] sm:max-w-[200px]">{room.name}</span>
                                 {isHost && (
-                                    <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                                    <span className="hidden sm:inline-block text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-bold">
                                         Anfitrión
                                     </span>
                                 )}
                             </h2>
-                            <p className="text-slate-450 text-xs font-mono">ID: {room.id}</p>
+                            <p className="text-slate-400 text-[10px] lg:text-xs font-mono hidden sm:block">ID: {room.id}</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 lg:gap-3">
                         {isHost && (
-                            <>
+                            <div className="hidden sm:flex items-center gap-2">
                                 <button
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-750 hover:text-white transition-all text-xs font-semibold flex items-center gap-1.5"
+                                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm"
                                     title="Editar nombre de la sala"
                                 >
                                     ✏️ Editar
                                 </button>
                                 <button
                                     onClick={() => setIsDeleteModalOpen(true)}
-                                    className="p-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-450 rounded-xl border border-rose-900/30 hover:text-rose-350 transition-all text-xs font-semibold flex items-center gap-1.5"
+                                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-white hover:bg-rose-50 text-rose-500 rounded-xl border border-rose-100 hover:border-rose-200 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm"
                                     title="Eliminar esta sala permanentemente"
                                 >
                                     🗑️ Eliminar
                                 </button>
-                            </>
+                            </div>
                         )}
                         <button
                             onClick={() => navigate('/dashboard')}
-                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all"
+                            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all shadow-sm"
                         >
-                            🚪 Salir del Salón
+                            <span className="hidden sm:inline">🚪 Salir del Salón</span>
+                            <span className="sm:hidden">🚪</span>
                         </button>
+                        {isHost && (
+                            <div className="flex sm:hidden gap-2">
+                                <button
+                                    onClick={() => setIsEditModalOpen(true)}
+                                    className="p-2 bg-white text-slate-600 rounded-xl border border-slate-200 shadow-sm"
+                                >
+                                    ✏️
+                                </button>
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(true)}
+                                    className="p-2 bg-white text-rose-500 rounded-xl border border-rose-100 shadow-sm"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </nav>
 
                 {/* Alerta de permisos denegados */}
                 {permissionError && (
-                    <div className="mx-6 mt-4 p-3 bg-rose-950/50 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-medium flex items-center gap-2">
+                    <div className="mx-4 lg:mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2 shadow-sm">
                         <span className="text-lg">⚠️</span>
                         <div>
                             <p className="font-bold">Permisos requeridos</p>
@@ -363,15 +382,15 @@ export default function RoomPage() {
                 )}
 
                 {/* Grid de Video/Audio WebRTC Dinámico */}
-                <div className={`flex-1 p-6 overflow-y-auto grid gap-4 items-center content-center max-w-6xl mx-auto w-full ${
-                    totalVideoSlots <= 1 ? 'grid-cols-1 max-w-2xl' :
-                    totalVideoSlots === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-5xl' :
-                    totalVideoSlots <= 4 ? 'grid-cols-2 max-w-5xl' :
+                <div className={`flex-1 p-4 lg:p-6 overflow-y-auto grid gap-3 lg:gap-4 items-center content-center mx-auto w-full ${
+                    totalVideoSlots <= 1 ? 'grid-cols-1 max-w-sm sm:max-w-xl' :
+                    totalVideoSlots === 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-4xl' :
+                    totalVideoSlots <= 4 ? 'grid-cols-2 max-w-4xl' :
                     'grid-cols-2 lg:grid-cols-3 max-w-6xl'
                 }`}>
                     
                     {/* Tarjeta del Usuario Local — Video Real */}
-                    <div className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl group transition-all hover:border-indigo-500/35">
+                    <div className="relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border border-slate-200 overflow-hidden shadow-sm transition-all hover:shadow-md">
                         {localStream && isCamOn ? (
                             <video
                                 ref={localVideoRef}
@@ -381,30 +400,28 @@ export default function RoomPage() {
                                 className="absolute inset-0 w-full h-full object-cover mirror-video"
                             />
                         ) : (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
-                                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-1">
-                                    <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                                        {profile?.avatarUrl ? (
-                                            <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-white text-2xl font-extrabold">{profile?.displayName?.slice(0, 2).toUpperCase() || 'YO'}</span>
-                                        )}
-                                    </div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                                <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-indigo-100 border-4 border-white flex items-center justify-center overflow-hidden shadow-sm">
+                                    {profile?.avatarUrl ? (
+                                        <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-indigo-600 text-xl lg:text-3xl font-bold">{profile?.displayName?.slice(0, 2).toUpperCase() || 'YO'}</span>
+                                    )}
                                 </div>
-                                <span className="text-slate-450 text-xs mt-3">{localStream ? 'Cámara Apagada' : 'Sin cámara disponible'}</span>
+                                <span className="text-slate-400 text-xs mt-3 font-medium">{localStream ? 'Cámara Apagada' : 'Sin cámara'}</span>
                             </div>
                         )}
 
                         {/* Indicadores flotantes */}
                         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                            <span className="bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-800">
-                                {profile?.displayName || profile?.username || 'Tú'} (Tú)
+                            <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded-full shadow-sm border border-slate-200/50 truncate max-w-[100px] lg:max-w-[150px]">
+                                {profile?.displayName || profile?.username || 'Tú'}
                             </span>
-                            <div className="flex gap-1.5">
-                                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] backdrop-blur-md border ${isMicOn ? 'bg-indigo-600/80 border-indigo-500/30 text-white' : 'bg-rose-600/80 border-rose-500/30 text-white'}`}>
+                            <div className="flex gap-1.5 lg:gap-2">
+                                <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${isMicOn ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-rose-500 border-rose-400 text-white'}`}>
                                     {isMicOn ? '🎤' : '🔇'}
                                 </span>
-                                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] backdrop-blur-md border ${isCamOn ? 'bg-indigo-600/80 border-indigo-500/30 text-white' : 'bg-rose-600/80 border-rose-500/30 text-white'}`}>
+                                <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${isCamOn ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-rose-500 border-rose-400 text-white'}`}>
                                     {isCamOn ? '📹' : '❌'}
                                 </span>
                             </div>
@@ -415,34 +432,32 @@ export default function RoomPage() {
                     {participants.filter(p => p.uid !== profile?.uid).map(p => {
                         const remote = remoteStreams.find(rs => rs.socketId === p.socketId)
                         return (
-                            <div key={p.socketId} className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl transition-all hover:border-purple-500/35">
+                            <div key={p.socketId} className="relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border border-slate-200 overflow-hidden shadow-sm transition-all hover:shadow-md">
                                 {remote ? (
                                     <RemoteVideo stream={remote.stream} />
                                 ) : (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 p-1">
-                                            <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                                                {p.avatarUrl ? (
-                                                    <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="text-teal-400 text-2xl font-extrabold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
-                                                )}
-                                            </div>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                                        <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-emerald-100 border-4 border-white flex items-center justify-center overflow-hidden shadow-sm">
+                                            {p.avatarUrl ? (
+                                                <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-emerald-600 text-xl lg:text-3xl font-bold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
+                                            )}
                                         </div>
-                                        <span className="text-slate-400 text-xs mt-3 flex items-center gap-1.5">
-                                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                        <span className="text-slate-400 text-[10px] lg:text-xs mt-3 flex items-center gap-1.5 font-medium">
+                                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                                             Conectando...
                                         </span>
                                     </div>
                                 )}
 
                                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                                    <span className="bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-800">
+                                    <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded-full shadow-sm border border-slate-200/50 truncate max-w-[100px] lg:max-w-[150px]">
                                         {p.displayName || p.username}
                                     </span>
                                     {remote && (
-                                        <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-500/30">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                        <span className="hidden sm:flex items-center gap-1.5 bg-emerald-50 text-emerald-600 text-[9px] lg:text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200 shadow-sm">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
                                             En vivo
                                         </span>
                                     )}
@@ -454,62 +469,69 @@ export default function RoomPage() {
                 </div>
 
                 {/* Controles de Transmisión AV — Funcionales */}
-                <div className="bg-slate-900 border-t border-slate-800 px-6 py-5 flex items-center justify-center gap-4 shrink-0">
+                <div className="bg-white border-t border-slate-100 px-3 py-3 lg:px-6 lg:py-5 flex items-center justify-center gap-2 lg:gap-4 shrink-0 flex-wrap shadow-[0_-4px_20px_rgb(0,0,0,0.02)] z-10">
                     <button 
                         onClick={toggleMic}
-                        className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${
+                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border ${
                             isMicOn 
-                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-750' 
-                            : 'bg-rose-950/40 hover:bg-rose-950/60 text-rose-400 border-rose-900/30'
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' 
+                            : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
                         }`}
+                        title={isMicOn ? 'Silenciar micrófono' : 'Activar micrófono'}
                     >
-                        <span>{isMicOn ? '🎤 Micrófono Activo' : '🔇 Micrófono Silenciado'}</span>
+                        <span className="text-lg lg:text-xl">{isMicOn ? '🎤' : '🔇'}</span>
+                        <span className="hidden sm:inline">{isMicOn ? 'Micrófono Activo' : 'Silenciado'}</span>
                     </button>
 
                     <button 
                         onClick={toggleCam}
-                        className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${
+                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border ${
                             isCamOn 
-                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-750' 
-                            : 'bg-rose-950/40 hover:bg-rose-950/60 text-rose-400 border-rose-900/30'
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' 
+                            : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
                         }`}
+                        title={isCamOn ? 'Apagar cámara' : 'Encender cámara'}
                     >
-                        <span>{isCamOn ? '📹 Cámara Encendida' : '❌ Cámara Apagada'}</span>
+                        <span className="text-lg lg:text-xl">{isCamOn ? '📹' : '❌'}</span>
+                        <span className="hidden sm:inline">{isCamOn ? 'Cámara Encendida' : 'Apagada'}</span>
                     </button>
 
                     <button 
                         onClick={toggleScreenShare}
-                        className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${
+                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border ${
                             isScreenSharing 
-                            ? 'bg-indigo-950/40 hover:bg-indigo-950/60 text-indigo-400 border-indigo-900/30' 
-                            : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-750'
+                            ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200' 
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                         }`}
+                        title={isScreenSharing ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
                     >
-                        <span>🖥️ {isScreenSharing ? 'Compartiendo Pantalla' : 'Compartir Pantalla'}</span>
+                        <span className="text-lg lg:text-xl">🖥️</span>
+                        <span className="hidden sm:inline">{isScreenSharing ? 'Compartiendo' : 'Compartir'}</span>
                     </button>
                 </div>
             </div>
 
             {/* PANEL LATERAL: Chat en Tiempo Real */}
-            <div className="w-96 bg-slate-900 border-l border-slate-800 flex flex-col h-full shrink-0">
+            <div className="w-full lg:w-[380px] h-[40vh] lg:h-full bg-white border-t lg:border-t-0 lg:border-l border-slate-100 flex flex-col shrink-0 relative z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.03)]">
                 {/* Header del Chat */}
-                <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
+                <div className="px-4 py-3 lg:px-5 lg:py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
                     <div className="flex items-center gap-2">
-                        <span className="text-indigo-400">💬</span>
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Chat en Vivo</h3>
+                        <span className="text-indigo-600 text-lg bg-indigo-50 w-8 h-8 rounded-lg flex items-center justify-center">💬</span>
+                        <h3 className="text-sm font-bold text-slate-900 tracking-tight">Chat en Vivo</h3>
                     </div>
-                    <span className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        ● Tiempo Real
+                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        En línea
                     </span>
                 </div>
 
                 {/* Lista de Mensajes del Chat */}
-                <div className="flex-1 p-5 overflow-y-auto flex flex-col gap-4 max-h-[calc(100vh-140px)] scrollbar-thin scrollbar-thumb-slate-850">
+                <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 bg-[#FDFDFE] scrollbar-thin scrollbar-thumb-slate-200">
                     {messages.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-500">
-                            <span className="text-3xl mb-2">💬</span>
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">El chat está vacío</p>
-                            <p className="text-[11px] text-slate-500 mt-1 max-w-[200px]">¡Sé el primero en enviar un mensaje amistoso de estudio!</p>
+                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-3xl mb-4 border border-slate-100">💬</div>
+                            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">El chat está vacío</p>
+                            <p className="text-[11px] text-slate-400 mt-1 max-w-[200px]">¡Sé el primero en enviar un mensaje amistoso!</p>
                         </div>
                     ) : (
                         messages.map((msg) => {
@@ -520,22 +542,22 @@ export default function RoomPage() {
                                     className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
                                 >
                                     {/* Cabecera del Mensaje */}
-                                    <div className="flex items-center gap-1.5 mb-1">
+                                    <div className="flex items-center gap-1.5 mb-1.5 mx-1">
                                         {!isMe && (
-                                            <span className="text-[10px] font-bold text-indigo-400">
+                                            <span className="text-[10px] font-bold text-slate-700 truncate max-w-[120px]">
                                                 {msg.senderDisplayName || msg.senderUsername}
                                             </span>
                                         )}
-                                        <span className="text-[9px] text-slate-500">
+                                        <span className="text-[9px] text-slate-400 font-medium">
                                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
 
                                     {/* Burbuja del Mensaje */}
-                                    <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed border shadow-md ${
+                                    <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
                                         isMe 
-                                        ? 'bg-indigo-650 text-white border-indigo-600 rounded-tr-none' 
-                                        : 'bg-slate-850 text-slate-200 border-slate-800 rounded-tl-none'
+                                        ? 'bg-indigo-600 text-white rounded-tr-sm shadow-indigo-600/10' 
+                                        : 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm'
                                     }`}>
                                         <p className="whitespace-pre-wrap break-words">{msg.text}</p>
                                     </div>
@@ -549,19 +571,19 @@ export default function RoomPage() {
                 {/* Input para Escribir Mensaje */}
                 <form 
                     onSubmit={handleSendMessage} 
-                    className="p-4 border-t border-slate-800 flex gap-2 bg-slate-900 shrink-0"
+                    className="p-3 lg:p-4 border-t border-slate-100 flex gap-2 bg-white shrink-0"
                 >
                     <input
                         type="text"
-                        placeholder="Escribe un mensaje en el chat..."
+                        placeholder="Escribe un mensaje..."
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
-                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 placeholder-slate-550 transition-all font-sans"
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-400 transition-all font-sans"
                     />
                     <button 
                         type="submit"
                         disabled={!inputText.trim()}
-                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white w-11 h-11 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/10 hover:shadow-indigo-500/20 transition-all shrink-0 font-bold"
+                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center shadow-md shadow-indigo-600/20 hover:shadow-indigo-500/30 transition-all shrink-0 font-bold"
                     >
                         ➤
                     </button>
@@ -570,23 +592,24 @@ export default function RoomPage() {
 
             {/* MODAL: EDITAR NOMBRE DE LA SALA */}
             {isEditModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
-                    <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl scale-100 transition-all">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+                    <div className="relative w-full max-w-md bg-white border border-slate-100 rounded-3xl p-6 lg:p-8 shadow-2xl scale-100 transition-all">
                         <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                ✏️ Modificar Nombre de Sala
+                            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <span className="bg-slate-100 w-8 h-8 flex items-center justify-center rounded-lg text-lg">✏️</span>
+                                Modificar Nombre
                             </h3>
                             <button
                                 onClick={() => setIsEditModalOpen(false)}
-                                className="text-slate-400 hover:text-white transition-colors"
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <form onSubmit={handleUpdateRoomName} className="space-y-4">
+                        <form onSubmit={handleUpdateRoomName} className="space-y-5">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                                <label className="block text-xs font-bold text-slate-600 mb-2">
                                     Nuevo nombre de la sala
                                 </label>
                                 <input
@@ -595,7 +618,7 @@ export default function RoomPage() {
                                     placeholder="Ej: Álgebra Lineal Grupo 4"
                                     value={newRoomName}
                                     onChange={(e) => setNewRoomName(e.target.value)}
-                                    className="w-full bg-slate-950 text-white border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                                    className="w-full bg-slate-50 text-slate-900 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
                                 />
                             </div>
 
@@ -603,16 +626,16 @@ export default function RoomPage() {
                                 <button
                                     type="button"
                                     onClick={() => setIsEditModalOpen(false)}
-                                    className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-350 rounded-xl text-sm font-semibold transition-colors"
+                                    className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-sm font-semibold transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={updatingName || !newRoomName.trim()}
-                                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-lg transition-all"
+                                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/20 transition-all"
                                 >
-                                    {updatingName ? 'Actualizando...' : 'Guardar Cambios'}
+                                    {updatingName ? 'Guardando...' : 'Guardar'}
                                 </button>
                             </div>
                         </form>
@@ -622,21 +645,22 @@ export default function RoomPage() {
 
             {/* MODAL DE CONFIRMACIÓN: ELIMINAR SALA */}
             {isDeleteModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
-                    <div className="relative w-full max-w-md bg-slate-900 border border-slate-850 rounded-2xl p-6 shadow-2xl scale-100 transition-all">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+                    <div className="relative w-full max-w-md bg-white border border-slate-100 rounded-3xl p-6 lg:p-8 shadow-2xl scale-100 transition-all">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-rose-400 flex items-center gap-2">
-                                ⚠️ ¿Eliminar esta Sala?
+                            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <span className="bg-rose-100 text-rose-600 w-8 h-8 flex items-center justify-center rounded-lg text-lg">⚠️</span>
+                                ¿Eliminar Sala?
                             </h3>
                             <button
                                 onClick={() => setIsDeleteModalOpen(false)}
-                                className="text-slate-400 hover:text-white transition-colors"
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <div className="bg-rose-500/10 border border-rose-500/25 rounded-xl p-4 text-xs leading-relaxed text-rose-200 mb-6">
+                        <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 text-xs leading-relaxed text-rose-700 mb-6">
                             <p className="font-bold uppercase tracking-wider mb-1">¡Advertencia Crítica!</p>
                             <p>Esta acción es irreversible. Se eliminará la sala de forma permanente junto con todo su historial de mensajes.</p>
                         </div>
@@ -645,16 +669,16 @@ export default function RoomPage() {
                             <button
                                 type="button"
                                 onClick={() => setIsDeleteModalOpen(false)}
-                                className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-350 rounded-xl text-sm font-semibold transition-colors"
+                                className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-sm font-semibold transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleDeleteRoom}
                                 disabled={deletingRoom}
-                                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-lg shadow-rose-650/15 transition-all"
+                                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-lg shadow-rose-600/20 transition-all"
                             >
-                                {deletingRoom ? 'Eliminando...' : 'Sí, Eliminar Sala'}
+                                {deletingRoom ? 'Eliminando...' : 'Sí, Eliminar'}
                             </button>
                         </div>
                     </div>
