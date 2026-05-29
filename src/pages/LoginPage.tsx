@@ -110,15 +110,7 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* Footer simulado */}
-                    <div className="mt-16 inline-flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
-                        <div className="flex -space-x-2">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-white"></div>
-                            <div className="w-8 h-8 rounded-full bg-purple-100 border-2 border-white"></div>
-                            <div className="w-8 h-8 rounded-full bg-pink-100 border-2 border-white"></div>
-                        </div>
-                        <span className="text-xs font-medium text-slate-600"><strong className="text-indigo-600">+128</strong> estudiantes conectados</span>
-                    </div>
+
                 </div>
             </div>
 

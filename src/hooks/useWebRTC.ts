@@ -224,23 +224,33 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     const toggleMic = useCallback(() => {
         const stream = localStreamRef.current
         if (stream) {
+            let newState = isMicOn
             stream.getAudioTracks().forEach(track => {
                 track.enabled = !track.enabled
+                newState = track.enabled
             })
-            setIsMicOn(prev => !prev)
+            setIsMicOn(newState)
+            if (socket) {
+                socket.emit('toggle-media', { type: 'mic', state: newState })
+            }
         }
-    }, [])
+    }, [socket, isMicOn])
 
     // ─── 7. Toggle Cámara ───────────────────────────────────────────
     const toggleCam = useCallback(() => {
         const stream = localStreamRef.current
         if (stream) {
+            let newState = isCamOn
             stream.getVideoTracks().forEach(track => {
                 track.enabled = !track.enabled
+                newState = track.enabled
             })
-            setIsCamOn(prev => !prev)
+            setIsCamOn(newState)
+            if (socket) {
+                socket.emit('toggle-media', { type: 'cam', state: newState })
+            }
         }
-    }, [])
+    }, [socket, isCamOn])
 
     // ─── 8. Compartir Pantalla ──────────────────────────────────────
     const toggleScreenShare = useCallback(async () => {

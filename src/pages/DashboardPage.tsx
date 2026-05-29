@@ -21,6 +21,21 @@ export default function DashboardPage() {
     const [rooms, setRooms] = useState<Room[]>([])
     const [loading, setLoading] = useState(true)
 
+    // Filtros y Favoritos
+    const [filter, setFilter] = useState<'all' | 'favorites' | 'recent'>('all')
+    const [favorites, setFavorites] = useState<string[]>(() => {
+        const saved = localStorage.getItem('favoriteRooms')
+        return saved ? JSON.parse(saved) : []
+    })
+
+    function toggleFavorite(roomId: string) {
+        setFavorites(prev => {
+            const next = prev.includes(roomId) ? prev.filter(id => id !== roomId) : [...prev, roomId]
+            localStorage.setItem('favoriteRooms', JSON.stringify(next))
+            return next
+        })
+    }
+
     // Modal state for joining room
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
     const [joinRoomId, setJoinRoomId] = useState('')
@@ -87,6 +102,17 @@ export default function DashboardPage() {
         </div>
     )
 
+    const displayRooms = rooms.filter(r => {
+        if (filter === 'favorites') return favorites.includes(r.id)
+        return true
+    }).sort((a, b) => {
+        if (filter === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        const aFav = favorites.includes(a.id) ? 1 : 0
+        const bFav = favorites.includes(b.id) ? 1 : 0
+        if (aFav !== bFav) return bFav - aFav
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+
     return (
         <div className="min-h-screen bg-[#F8F7FA] text-slate-800 font-sans selection:bg-indigo-100 selection:text-indigo-900 pb-16">
             {/* Header / Navbar */}
@@ -149,15 +175,15 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Filtros (Simulados para estilo visual) */}
+                {/* Filtros */}
                 <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
-                    <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold shrink-0">Todas</span>
-                    <span className="px-4 py-1.5 bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-full text-xs font-semibold cursor-pointer shrink-0 transition-colors">Favoritas</span>
-                    <span className="px-4 py-1.5 bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-full text-xs font-semibold cursor-pointer shrink-0 transition-colors">Recientes</span>
+                    <button onClick={() => setFilter('all')} className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 transition-colors ${filter === 'all' ? 'bg-indigo-50 text-indigo-600' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>Todas</button>
+                    <button onClick={() => setFilter('favorites')} className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 transition-colors ${filter === 'favorites' ? 'bg-indigo-50 text-indigo-600' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>Favoritas</button>
+                    <button onClick={() => setFilter('recent')} className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 transition-colors ${filter === 'recent' ? 'bg-indigo-50 text-indigo-600' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>Recientes</button>
                 </div>
 
                 {/* Lista de Salas */}
-                {rooms.length === 0 ? (
+                {displayRooms.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 text-center bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
                         <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-4xl mb-6 shadow-inner">
                             📚
@@ -177,7 +203,7 @@ export default function DashboardPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {rooms.map((room, index) => {
+                        {displayRooms.map((room, index) => {
                             const isHost = room.createdBy === user?.uid || room.createdBy === profile?.uid
                             // Assigning a pseudo-random icon color based on index for the visual flair
                             const iconColors = ['bg-indigo-100 text-indigo-600', 'bg-emerald-100 text-emerald-600', 'bg-purple-100 text-purple-600', 'bg-sky-100 text-sky-600', 'bg-rose-100 text-rose-600', 'bg-amber-100 text-amber-600'];
@@ -193,7 +219,7 @@ export default function DashboardPage() {
                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm ${iconColor}`}>
                                                 {isHost ? '👑' : '👥'}
                                             </div>
-                                            <button className="text-slate-400 hover:text-amber-400 transition-colors">
+                                            <button onClick={() => toggleFavorite(room.id)} className={`transition-colors text-xl ${favorites.includes(room.id) ? 'text-amber-400' : 'text-slate-200 hover:text-amber-300'}`}>
                                                 ★
                                             </button>
                                         </div>

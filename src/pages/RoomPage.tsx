@@ -36,6 +36,8 @@ interface Participant {
     username: string
     displayName: string
     avatarUrl: string
+    isMicOn?: boolean
+    isCamOn?: boolean
 }
 
 export default function RoomPage() {
@@ -456,10 +458,14 @@ export default function RoomPage() {
                                         {p.displayName || p.username}
                                     </span>
                                     {remote && (
-                                        <span className="hidden sm:flex items-center gap-1.5 bg-emerald-50 text-emerald-600 text-[9px] lg:text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200 shadow-sm">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                                            En vivo
-                                        </span>
+                                        <div className="flex gap-1.5 lg:gap-2">
+                                            <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isMicOn !== false ? 'bg-indigo-600/90 border-indigo-500/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
+                                                {p.isMicOn !== false ? '🎤' : '🔇'}
+                                            </span>
+                                            <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isCamOn !== false ? 'bg-indigo-600/90 border-indigo-500/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
+                                                {p.isCamOn !== false ? '📹' : '❌'}
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
                             </div>

@@ -1,23 +1,23 @@
 export default function LandingPage() {
     return (
-        <div className="flex items-center justify-center h-screen bg-gray-50">
-            <div className="text-center">
-                <h1 className="text-4xl font-bold text-gray-800 mb-4">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#FDFDFE] font-sans selection:bg-indigo-100 selection:text-indigo-900">
+            <div className="text-center px-4">
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
                     Salón de Estudio Colaborativo
                 </h1>
-                <p className="text-gray-500 mb-8">
+                <p className="text-slate-500 font-medium mb-10 text-base sm:text-lg max-w-lg mx-auto">
                     Estudia en tiempo real con tus compañeros
                 </p>
-                <div className="flex gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                     <a
                         href="/login"
-                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/20"
                     >
                         Iniciar sesión
                     </a>
                     <a
                         href="/register"
-                        className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50"
+                        className="w-full sm:w-auto px-8 py-3 bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-semibold rounded-xl transition-all shadow-sm"
                     >
                         Registrarse
                     </a>
