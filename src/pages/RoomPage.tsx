@@ -52,14 +52,46 @@ export default function RoomPage() {
     const [error, setError] = useState('')
     const [participants, setParticipants] = useState<Participant[]>([])
 
-    // Socket state
-    const socketRef = useRef<Socket | null>(null)
-
-    // Scroll reference
-    const messagesEndRef = useRef<HTMLDivElement>(null)
-
     // Video refs
     const localVideoRef = useRef<HTMLVideoElement>(null)
+
+    // Socket state
+    const [socket, setSocket] = useState<Socket | null>(null)
+
+    // Chat UI state
+    const [isChatOpen, setIsChatOpen] = useState(window.innerWidth >= 1024)
+    const [unreadCount, setUnreadCount] = useState(0)
+    const prevMessagesLengthRef = useRef(0)
+
+    // Auto-scroll logic & unread count reset
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+
+    useEffect(() => {
+        if (isChatOpen) {
+            setUnreadCount(0)
+            scrollToBottom()
+        }
+    }, [isChatOpen, messages])
+
+    useEffect(() => {
+        if (!isChatOpen && messages.length > prevMessagesLengthRef.current) {
+            setUnreadCount(prev => prev + (messages.length - prevMessagesLengthRef.current))
+        }
+        prevMessagesLengthRef.current = messages.length
+    }, [messages, isChatOpen])
+
+    // Update isChatOpen on window resize (optional, but good for UX)
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 1024) {
+                setIsChatOpen(true)
+            }
+        }
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
 
     // WebRTC hook
     const {
@@ -73,7 +105,7 @@ export default function RoomPage() {
         toggleMic,
         toggleCam,
         toggleScreenShare,
-    } = useWebRTC({ socket: socketRef.current, roomId })
+    } = useWebRTC({ socket, roomId })
 
     // Host modals
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -111,57 +143,70 @@ export default function RoomPage() {
         loadRoomData()
     }, [roomId])
 
-    // Establish WebSocket Connection — independiente del estado de carga
+    // Establish WebSocket Connection — solo después de obtener el stream local
     useEffect(() => {
         if (!roomId || !profile) return
 
-        const socketUrl = (import.meta.env.VITE_BACKEND_REALTIME_URL || 'http://localhost:5000').replace(/\/$/, '')
-        const socket = io(socketUrl, {
-            transports: ['websocket'],
-            reconnection: true,
-            reconnectionAttempts: 10,
-            reconnectionDelay: 1000,
-        })
-        socketRef.current = socket
+        let newSocket: Socket | null = null;
 
-        // Unirse a la sala en cuanto la conexión se establece
-        socket.on('connect', () => {
-            console.log(`🔌 Socket conectado: ${socket.id}`)
-            socket.emit('join-room', { roomId, user: profile })
-        })
+        const initConnection = async () => {
+            // 1. Esperar a tener el stream local (o permiso denegado) ANTES de unirse a la sala
+            await startLocalStream()
 
-        // Volver a unirse si el socket se reconecta (Render puede reiniciar el servidor)
-        socket.on('reconnect', () => {
-            console.log(`🔄 Socket reconectado, volviendo a unirse a sala: ${roomId}`)
-            socket.emit('join-room', { roomId, user: profile })
-        })
-
-        socket.on('room-participants', (users: Participant[]) => {
-            setParticipants(users)
-        })
-
-        // Recibir mensajes nuevos de otros participantes en tiempo real
-        socket.on('new-message', (message: ChatMessage) => {
-            setMessages(prev => {
-                if (prev.some(m => m.id === message.id)) return prev
-                return [...prev, message]
+            // 2. Conectar al socket
+            const socketUrl = (import.meta.env.VITE_BACKEND_REALTIME_URL || 'http://localhost:5000').replace(/\/$/, '')
+            newSocket = io(socketUrl, {
+                transports: ['websocket'],
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000,
             })
-        })
+            
+            setSocket(newSocket)
 
-        // Recibir cambios del nombre de sala (si el anfitrión edita)
-        socket.on('room-updated', (updatedData: { name: string }) => {
-            setRoom(prev => prev ? { ...prev, name: updatedData.name } : null)
-        })
+            // Unirse a la sala en cuanto la conexión se establece
+            newSocket.on('connect', () => {
+                console.log(`🔌 Socket conectado: ${newSocket!.id}`)
+                newSocket!.emit('join-room', { roomId, user: profile })
+            })
 
-        // Iniciar captura local de cámara/micrófono
-        startLocalStream()
+            // Volver a unirse si el socket se reconecta (Render puede reiniciar el servidor)
+            newSocket.on('reconnect', () => {
+                console.log(`🔄 Socket reconectado, volviendo a unirse a sala: ${roomId}`)
+                newSocket!.emit('join-room', { roomId, user: profile })
+            })
+
+            newSocket.on('room-participants', (users: Participant[]) => {
+                setParticipants(users)
+            })
+
+            // Recibir mensajes nuevos de otros participantes en tiempo real
+            newSocket.on('new-message', (message: ChatMessage) => {
+                setMessages(prev => {
+                    if (prev.some(m => m.id === message.id)) return prev
+                    return [...prev, message]
+                })
+            })
+
+            // Recibir cambios del nombre de sala (si el anfitrión edita)
+            newSocket.on('room-updated', (updatedData: { name: string }) => {
+                setRoom(prev => prev ? { ...prev, name: updatedData.name } : null)
+            })
+        }
+
+        initConnection()
 
         // Cleanup: salir de la sala y desconectar al salir de la página
         return () => {
-            socket.emit('leave-room', roomId)
-            socket.disconnect()
+            if (newSocket) {
+                newSocket.emit('leave-room', roomId)
+                newSocket.disconnect()
+            }
         }
-    }, [roomId, profile])
+    }, [roomId, profile, startLocalStream])
+
+    // Scroll reference (movido aquí abajo del useEffect principal para orden)
+    const messagesEndRef = useRef<HTMLDivElement>(null)
 
     // Vincular el stream local al elemento <video> cuando cambie
     useEffect(() => {
@@ -195,14 +240,7 @@ export default function RoomPage() {
         return () => clearInterval(interval)
     }, [roomId])
 
-    // Auto-scroll logic
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
 
-    useEffect(() => {
-        scrollToBottom()
-    }, [messages])
 
     // Handle sending a chat message
     async function handleSendMessage(e: React.FormEvent) {
@@ -220,8 +258,8 @@ export default function RoomPage() {
             setMessages(prev => [...prev, createdMsg])
 
             // 3. Emitir a otros miembros vía WebSockets
-            if (socketRef.current) {
-                socketRef.current.emit('send-message', {
+            if (socket) {
+                socket.emit('send-message', {
                     roomId,
                     message: createdMsg
                 })
@@ -245,8 +283,8 @@ export default function RoomPage() {
             setIsEditModalOpen(false)
             
             // Notificar cambios vía sockets si es necesario
-            if (socketRef.current) {
-                socketRef.current.emit('update-room-notify', { roomId, name: cleanName })
+            if (socket) {
+                socket.emit('update-room-notify', { roomId, name: cleanName })
             }
         } catch (err: any) {
             alert(err.message || 'Error al actualizar el nombre de la sala')
@@ -332,15 +370,17 @@ export default function RoomPage() {
                             <div className="hidden sm:flex items-center gap-2">
                                 <button
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+                                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
                                     title="Editar nombre de la sala"
+                                    aria-label="Editar nombre de la sala"
                                 >
                                     ✏️ Editar
                                 </button>
                                 <button
                                     onClick={() => setIsDeleteModalOpen(true)}
-                                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-white hover:bg-rose-50 text-rose-500 rounded-xl border border-rose-100 hover:border-rose-200 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+                                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-white hover:bg-rose-50 text-rose-500 rounded-xl border border-rose-100 hover:border-rose-200 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1"
                                     title="Eliminar esta sala permanentemente"
+                                    aria-label="Eliminar sala permanentemente"
                                 >
                                     🗑️ Eliminar
                                 </button>
@@ -348,24 +388,27 @@ export default function RoomPage() {
                         )}
                         <button
                             onClick={() => navigate('/dashboard')}
-                            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all shadow-sm"
+                            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1"
+                            aria-label="Salir del salón"
                         >
                             <span className="hidden sm:inline">🚪 Salir del Salón</span>
-                            <span className="sm:hidden">🚪</span>
+                            <span className="sm:hidden" aria-hidden="true">🚪</span>
                         </button>
                         {isHost && (
                             <div className="flex sm:hidden gap-2">
                                 <button
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="p-2 bg-white text-slate-600 rounded-xl border border-slate-200 shadow-sm"
+                                    className="p-2 bg-white text-slate-600 rounded-xl border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                                    aria-label="Editar nombre de la sala (móvil)"
                                 >
-                                    ✏️
+                                    <span aria-hidden="true">✏️</span>
                                 </button>
                                 <button
                                     onClick={() => setIsDeleteModalOpen(true)}
-                                    className="p-2 bg-white text-rose-500 rounded-xl border border-rose-100 shadow-sm"
+                                    className="p-2 bg-white text-rose-500 rounded-xl border border-rose-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1"
+                                    aria-label="Eliminar sala (móvil)"
                                 >
-                                    🗑️
+                                    <span aria-hidden="true">🗑️</span>
                                 </button>
                             </div>
                         )}
@@ -475,60 +518,113 @@ export default function RoomPage() {
                 </div>
 
                 {/* Controles de Transmisión AV — Funcionales */}
-                <div className="bg-white border-t border-slate-100 px-3 py-3 lg:px-6 lg:py-5 flex items-center justify-center gap-2 lg:gap-4 shrink-0 flex-wrap shadow-[0_-4px_20px_rgb(0,0,0,0.02)] z-10">
+                <div className="bg-white border-t border-slate-100 px-3 py-3 lg:px-6 lg:py-5 flex items-center justify-center gap-2 lg:gap-4 shrink-0 flex-wrap shadow-[0_-4px_20px_rgb(0,0,0,0.02)] z-10" role="group" aria-label="Controles de audio y video">
                     <button 
                         onClick={toggleMic}
-                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border ${
+                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                             isMicOn 
-                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' 
-                            : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 focus:ring-slate-400' 
+                            : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200 focus:ring-rose-500'
                         }`}
                         title={isMicOn ? 'Silenciar micrófono' : 'Activar micrófono'}
+                        aria-label={isMicOn ? 'Silenciar micrófono' : 'Activar micrófono'}
+                        aria-pressed={isMicOn}
                     >
-                        <span className="text-lg lg:text-xl">{isMicOn ? '🎤' : '🔇'}</span>
+                        <span className="text-lg lg:text-xl" aria-hidden="true">{isMicOn ? '🎤' : '🔇'}</span>
                         <span className="hidden sm:inline">{isMicOn ? 'Micrófono Activo' : 'Silenciado'}</span>
                     </button>
 
                     <button 
                         onClick={toggleCam}
-                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border ${
+                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                             isCamOn 
-                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' 
-                            : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 focus:ring-slate-400' 
+                            : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200 focus:ring-rose-500'
                         }`}
                         title={isCamOn ? 'Apagar cámara' : 'Encender cámara'}
+                        aria-label={isCamOn ? 'Apagar cámara' : 'Encender cámara'}
+                        aria-pressed={isCamOn}
                     >
-                        <span className="text-lg lg:text-xl">{isCamOn ? '📹' : '❌'}</span>
+                        <span className="text-lg lg:text-xl" aria-hidden="true">{isCamOn ? '📹' : '❌'}</span>
                         <span className="hidden sm:inline">{isCamOn ? 'Cámara Encendida' : 'Apagada'}</span>
                     </button>
 
                     <button 
                         onClick={toggleScreenShare}
-                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border ${
+                        className={`p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                             isScreenSharing 
-                            ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200' 
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                            ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200 focus:ring-indigo-500' 
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 focus:ring-slate-400'
                         }`}
                         title={isScreenSharing ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
+                        aria-label={isScreenSharing ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
+                        aria-pressed={isScreenSharing}
                     >
-                        <span className="text-lg lg:text-xl">🖥️</span>
+                        <span className="text-lg lg:text-xl" aria-hidden="true">🖥️</span>
                         <span className="hidden sm:inline">{isScreenSharing ? 'Compartiendo' : 'Compartir'}</span>
+                    </button>
+
+                    <button 
+                        onClick={() => setIsChatOpen(!isChatOpen)}
+                        className={`relative p-3 lg:px-6 lg:py-3.5 rounded-full lg:rounded-2xl text-xs lg:text-sm font-bold transition-all flex items-center gap-2 shadow-sm border focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                            isChatOpen 
+                            ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200 focus:ring-indigo-500' 
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 focus:ring-slate-400'
+                        }`}
+                        title={isChatOpen ? 'Cerrar chat' : 'Abrir chat'}
+                        aria-label={isChatOpen ? 'Cerrar chat' : 'Abrir chat'}
+                        aria-pressed={isChatOpen}
+                    >
+                        <span className="text-lg lg:text-xl" aria-hidden="true">💬</span>
+                        <span className="hidden sm:inline">Chat</span>
+                        {!isChatOpen && unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 lg:top-0 lg:right-0 transform lg:-translate-y-1/2 lg:translate-x-1/2 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-bounce">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
                     </button>
                 </div>
             </div>
 
+            {/* Overlay oscuro para el móvil cuando el chat está abierto */}
+            {isChatOpen && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+                    onClick={() => setIsChatOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
+
             {/* PANEL LATERAL: Chat en Tiempo Real */}
-            <div className="w-full lg:w-[380px] h-[40vh] lg:h-full bg-white border-t lg:border-t-0 lg:border-l border-slate-100 flex flex-col shrink-0 relative z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.03)]">
+            <div className={`
+                fixed lg:static inset-x-0 bottom-0 z-50 lg:z-20 
+                w-full lg:w-[380px] 
+                h-[75vh] lg:h-full 
+                bg-white border-t lg:border-t-0 lg:border-l border-slate-100 
+                flex-col shrink-0 relative
+                shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:shadow-[-4px_0_24px_rgba(0,0,0,0.03)]
+                transition-transform duration-300 ease-out rounded-t-3xl lg:rounded-none
+                ${isChatOpen ? 'translate-y-0 flex' : 'translate-y-full lg:translate-y-0 hidden lg:hidden'}
+            `}>
                 {/* Header del Chat */}
-                <div className="px-4 py-3 lg:px-5 lg:py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+                <div className="px-4 py-3 lg:px-5 lg:py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0 rounded-t-3xl lg:rounded-none">
                     <div className="flex items-center gap-2">
-                        <span className="text-indigo-600 text-lg bg-indigo-50 w-8 h-8 rounded-lg flex items-center justify-center">💬</span>
+                        <span className="text-indigo-600 text-lg bg-indigo-50 w-8 h-8 rounded-lg flex items-center justify-center" aria-hidden="true">💬</span>
                         <h3 className="text-sm font-bold text-slate-900 tracking-tight">Chat en Vivo</h3>
                     </div>
-                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        En línea
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            En línea
+                        </span>
+                        <button 
+                            className="lg:hidden w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+                            onClick={() => setIsChatOpen(false)}
+                            aria-label="Cerrar chat"
+                        >
+                            <span aria-hidden="true">✕</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Lista de Mensajes del Chat */}
@@ -589,9 +685,10 @@ export default function RoomPage() {
                     <button 
                         type="submit"
                         disabled={!inputText.trim()}
-                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center shadow-md shadow-indigo-600/20 hover:shadow-indigo-500/30 transition-all shrink-0 font-bold"
+                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center shadow-md shadow-indigo-600/20 hover:shadow-indigo-500/30 transition-all shrink-0 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                        aria-label="Enviar mensaje"
                     >
-                        ➤
+                        <span aria-hidden="true">➤</span>
                     </button>
                 </form>
             </div>

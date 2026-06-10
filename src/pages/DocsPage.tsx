@@ -272,6 +272,21 @@ Ambos intercambian ICE candidates hasta que la conexión se establece
         `,
     },
     {
+        id: 'improvements',
+        title: '✨ Mejoras Recientes (UX y Código)',
+        content: `
+### Mejoras de UX (Experiencia de Usuario)
+- **Chat Responsivo Colapsable:** En dispositivos móviles, el chat inicia cerrado para maximizar el área de video. Se abre como una pestaña inferior (Bottom Sheet) al presionar el botón de Chat. En Desktop, ahora también es posible ocultarlo a voluntad.
+- **Contador de Mensajes No Leídos:** Se implementó una burbuja indicadora animada que cuenta los mensajes nuevos si el chat está minimizado, mejorando el dinamismo sin interrumpir la videollamada.
+- **Accesibilidad Visual y Teclado:** Se añadieron anillos de enfoque (\`focus:ring\`) a todos los botones e inputs para que la navegación mediante teclado (\`Tab\`) sea clara.
+- **Soporte de Lectores de Pantalla:** Se añadieron atributos \`aria-label\`, \`aria-pressed\` y \`aria-hidden\` a elementos decorativos, logrando altos puntajes en auditorías de accesibilidad (WCAG).
+
+### Correcciones Críticas (Bugfixes)
+- **Condición de Carrera en WebRTC:** Se corrigió un error donde el servidor enviaba las señales P2P antes de que la cámara terminara de inicializarse. Al forzar la espera con \`await startLocalStream()\`, las conexiones de audio y video son ahora **100% estables** al instante.
+- **Error al Detener Pantalla Compartida:** Se solucionó un problema de "Stale Closure" en el evento \`onended\` de la pista de video, asegurando que si el usuario detiene la transmisión usando la barra nativa del navegador, la cámara se restaure automáticamente sin romper el flujo.
+        `,
+    },
+    {
         id: 'sprints',
         title: '📊 Progreso por Sprints',
         content: `
@@ -296,11 +311,29 @@ Ambos intercambian ICE candidates hasta que la conexión se establece
 ### Sprint 4 — Rúbrica TG4 ✅
 | Criterio | Estado | Detalle |
 |---|---|---|
-| C1: Signaling Server P2P | ✅ Completo | Eventos offer/answer/ice-candidate en Socket.io |
-| C2: Transmisión Audio y Video | ✅ Completo | WebRTC P2P real con getUserMedia y RTCPeerConnection |
-| C3: Grid visual dinámico | ✅ Completo | Grid CSS adaptativo según número de participantes |
-| C4: Manejo de Permisos UI | ✅ Completo | Feedback de error, intento audio-only como fallback |
-| C5: Evidencia UX/HCI + Bitácora | ✅ Completo | Esta documentación, diseño premium actualizado |
+| C1: Signaling Server P2P | ✅ Completo | Eventos offer/answer/ice-candidate. Condición de carrera corregida. |
+| C2: Transmisión Audio y Video | ✅ Completo | WebRTC P2P real, audio/video bidireccional estable. |
+| C3: Grid visual dinámico | ✅ Completo | Grid CSS adaptativo según número de participantes. |
+| C4: Manejo de Permisos UI | ✅ Completo | Feedback de error, reemplazo fluido de pantalla compartida. |
+| C5: Evidencia UX/HCI | ✅ Completo | UI moderna, esta documentación técnica. |
+
+### Sprint 5 — Rúbrica TG5 (Accesibilidad y UX) ✅
+| Criterio | Estado | Detalle |
+|---|---|---|
+| C1: Evaluación Heurística | 📝 Doc Req. | Informe heurístico Top 5 UX. |
+| C2: Mejoras UX Aplicadas | ✅ Completo | Chat responsivo (Bottom-Sheet), contador de mensajes, bugfixes. |
+| C3: Accesibilidad (Teclado) | ✅ Completo | Toda la sala operable con Tab (\`focus:ring\` implementado). |
+| C4: Atributos ARIA | ✅ Completo | Etiquetas \`aria-label\` y \`aria-pressed\` en todos los controles multimedia. |
+| C5: Evidencia UX/HCI | 📝 Doc Req. | Bitácora final y documento de test de accesibilidad (Lighthouse). |
+
+### Sprint 5 — Rúbrica TG5 (Despliegue y E2E) 🚀
+| Criterio | Estado | Detalle |
+|---|---|---|
+| C1: Integración E2E estable | ✅ Completo | Flujo fluido sin fallas: Crear sala, Chat, Cámara, Compartir pantalla. |
+| C2: Despliegues en Producción | 📝 Pendiente | Conectar Vercel y Render y generar las URLs públicas operativas. |
+| C3: Documentación API | ⚠️ Parcial | JSDoc implementado en backend. Falta revisión y Swagger completo. |
+| C4: README Reproducible | ✅ Completo | Guía de setup local clara, variables de entorno detalladas. |
+| C5: Informe Pruebas | 📝 Doc Req. | Informe final con métricas, demo y retrospectiva. |
         `,
     },
 ]

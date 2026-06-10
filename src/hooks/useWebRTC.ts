@@ -253,26 +253,30 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     }, [socket, isCamOn])
 
     // ─── 8. Compartir Pantalla ──────────────────────────────────────
-    const toggleScreenShare = useCallback(async () => {
-        if (isScreenSharing) {
-            // Restaurar cámara
-            const camStream = cameraStreamRef.current
-            if (camStream) {
-                const videoTrack = camStream.getVideoTracks()[0]
-                if (videoTrack) {
-                    peerConnections.current.forEach(pc => {
-                        const sender = pc.getSenders().find(s => s.track?.kind === 'video')
-                        if (sender) sender.replaceTrack(videoTrack)
-                    })
-                    // Actualizar stream local
-                    const current = localStreamRef.current
-                    if (current) {
-                        current.getVideoTracks().forEach(t => current.removeTrack(t))
-                        current.addTrack(videoTrack)
-                    }
+    const stopScreenSharing = useCallback(() => {
+        // Restaurar cámara
+        const camStream = cameraStreamRef.current
+        if (camStream) {
+            const videoTrack = camStream.getVideoTracks()[0]
+            if (videoTrack) {
+                peerConnections.current.forEach(pc => {
+                    const sender = pc.getSenders().find(s => s.track?.kind === 'video')
+                    if (sender) sender.replaceTrack(videoTrack)
+                })
+                // Actualizar stream local
+                const current = localStreamRef.current
+                if (current) {
+                    current.getVideoTracks().forEach(t => current.removeTrack(t))
+                    current.addTrack(videoTrack)
                 }
             }
-            setIsScreenSharing(false)
+        }
+        setIsScreenSharing(false)
+    }, [])
+
+    const toggleScreenShare = useCallback(async () => {
+        if (isScreenSharing) {
+            stopScreenSharing()
         } else {
             try {
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true })
@@ -280,7 +284,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
                 // Reemplazar la pista de video en todas las conexiones peer
                 peerConnections.current.forEach(pc => {
-                    const sender = pc.getSenders().find(s => s.track?.kind === 'video')
+                    const sender = pc.getSenders().find(s => s.track?.kind === 'video' || (s.track === null))
                     if (sender) sender.replaceTrack(screenTrack)
                 })
 
@@ -293,7 +297,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
                 // Cuando el usuario deja de compartir desde el botón nativo del navegador
                 screenTrack.onended = () => {
-                    toggleScreenShare()
+                    stopScreenSharing()
                 }
 
                 setIsScreenSharing(true)
@@ -301,7 +305,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 console.error('Error al compartir pantalla:', err)
             }
         }
-    }, [isScreenSharing])
+    }, [isScreenSharing, stopScreenSharing])
 
     // ─── 9. Cleanup al desmontar ────────────────────────────────────
     useEffect(() => {
