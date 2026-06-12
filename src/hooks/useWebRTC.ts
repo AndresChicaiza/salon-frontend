@@ -90,19 +90,22 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
         // Cuando recibimos las pistas remotas del peer
         pc.ontrack = (event) => {
-            const [remoteStream] = event.streams
-            if (remoteStream) {
-                setRemoteStreams(prev => {
-                    const exists = prev.find(rs => rs.socketId === targetSocketId)
-                    if (exists) {
-                        // Actualizar stream existente
-                        return prev.map(rs =>
-                            rs.socketId === targetSocketId ? { ...rs, stream: remoteStream } : rs
-                        )
-                    }
-                    return [...prev, { socketId: targetSocketId, stream: remoteStream }]
-                })
-            }
+            const track = event.track
+            setRemoteStreams(prev => {
+                const exists = prev.find(rs => rs.socketId === targetSocketId)
+                if (exists) {
+                    // Actualizar stream existente agregando la nueva pista (ej. audio + video)
+                    // Se crea un nuevo MediaStream para que React detecte el cambio de referencia
+                    exists.stream.addTrack(track)
+                    const newStream = new MediaStream(exists.stream.getTracks())
+                    return prev.map(rs =>
+                        rs.socketId === targetSocketId ? { ...rs, stream: newStream } : rs
+                    )
+                }
+                // Primera pista
+                const newStream = new MediaStream([track])
+                return [...prev, { socketId: targetSocketId, stream: newStream }]
+            })
         }
 
         pc.oniceconnectionstatechange = () => {

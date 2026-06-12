@@ -213,7 +213,7 @@ export default function RoomPage() {
         if (localVideoRef.current && localStream) {
             localVideoRef.current.srcObject = localStream
         }
-    }, [localStream])
+    }, [localStream, isCamOn])
 
     // Polling de seguridad: sincroniza mensajes desde Firestore cada 8 segundos
     // Garantiza que los mensajes siempre aparezcan incluso si el socket falla en Render
