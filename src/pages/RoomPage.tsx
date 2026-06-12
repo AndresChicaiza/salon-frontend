@@ -438,7 +438,7 @@ export default function RoomPage() {
                 }`}>
                     
                     {/* Tarjeta del Usuario Local — Video Real */}
-                    <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isLocalSpeaking ? 'border-4 border-indigo-500 shadow-indigo-500/50 scale-[1.02]' : 'border-slate-200'}`}>
+                    <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isLocalSpeaking ? 'border-4 border-emerald-500 shadow-emerald-500/50 scale-[1.02]' : 'border-slate-200'}`}>
                         {localStream && (isCamOn || isScreenSharing) ? (
                             <video
                                 ref={localVideoRef}
@@ -784,7 +784,7 @@ function RemoteParticipantCard({ participant: p, remoteStream }: { participant: 
     const isSpeaking = useAudioVolume(remoteStream?.stream || null, p.isMicOn === false)
 
     return (
-        <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isSpeaking ? 'border-4 border-indigo-500 shadow-indigo-500/50 scale-[1.02]' : 'border-slate-200'}`}>
+        <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isSpeaking ? 'border-4 border-emerald-500 shadow-emerald-500/50 scale-[1.02]' : 'border-slate-200'}`}>
             {remoteStream ? (
                 <RemoteVideo stream={remoteStream.stream} />
             ) : (
