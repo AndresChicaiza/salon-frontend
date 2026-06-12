@@ -106,7 +106,7 @@ export default function RoomPage() {
         toggleMic,
         toggleCam,
         toggleScreenShare,
-        peerConnections,
+        removePeer,
     } = useWebRTC({ socket, roomId })
 
     const isLocalSpeaking = useAudioVolume(localStream, !isMicOn)
