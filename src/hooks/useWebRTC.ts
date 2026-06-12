@@ -33,6 +33,8 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     // Referencia al stream de cámara original (para restaurar tras compartir pantalla)
     const cameraStreamRef = useRef<MediaStream | null>(null)
     const localStreamRef = useRef<MediaStream | null>(null)
+    // Ref para encolar candidatos ICE antes de que se establezca remoteDescription
+    const pendingCandidates = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
 
     // ─── 1. Obtener medios locales (cámara + micrófono) ─────────────
     const startLocalStream = useCallback(async () => {
@@ -90,22 +92,31 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
         // Cuando recibimos las pistas remotas del peer
         pc.ontrack = (event) => {
-            const track = event.track
-            setRemoteStreams(prev => {
-                const exists = prev.find(rs => rs.socketId === targetSocketId)
-                if (exists) {
-                    // Actualizar stream existente agregando la nueva pista (ej. audio + video)
-                    // Se crea un nuevo MediaStream para que React detecte el cambio de referencia
-                    exists.stream.addTrack(track)
-                    const newStream = new MediaStream(exists.stream.getTracks())
-                    return prev.map(rs =>
-                        rs.socketId === targetSocketId ? { ...rs, stream: newStream } : rs
-                    )
-                }
-                // Primera pista
-                const newStream = new MediaStream([track])
-                return [...prev, { socketId: targetSocketId, stream: newStream }]
-            })
+            if (event.streams && event.streams[0]) {
+                const stream = event.streams[0]
+                setRemoteStreams(prev => {
+                    const exists = prev.find(rs => rs.socketId === targetSocketId)
+                    if (exists && exists.stream === stream) return prev
+                    return [
+                        ...prev.filter(rs => rs.socketId !== targetSocketId),
+                        { socketId: targetSocketId, stream }
+                    ]
+                })
+            } else {
+                const track = event.track
+                setRemoteStreams(prev => {
+                    const exists = prev.find(rs => rs.socketId === targetSocketId)
+                    if (exists) {
+                        exists.stream.addTrack(track)
+                        const newStream = new MediaStream(exists.stream.getTracks())
+                        return prev.map(rs =>
+                            rs.socketId === targetSocketId ? { ...rs, stream: newStream } : rs
+                        )
+                    }
+                    const newStream = new MediaStream([track])
+                    return [...prev, { socketId: targetSocketId, stream: newStream }]
+                })
+            }
         }
 
         pc.oniceconnectionstatechange = () => {
@@ -125,6 +136,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             pc.close()
             peerConnections.current.delete(socketId)
         }
+        pendingCandidates.current.delete(socketId)
         setRemoteStreams(prev => prev.filter(rs => rs.socketId !== socketId))
     }, [])
 
@@ -152,6 +164,20 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     useEffect(() => {
         if (!socket || !roomId) return
 
+        const flushIceCandidates = async (socketId: string, pc: RTCPeerConnection) => {
+            const candidates = pendingCandidates.current.get(socketId)
+            if (candidates) {
+                for (const candidate of candidates) {
+                    try {
+                        await pc.addIceCandidate(new RTCIceCandidate(candidate))
+                    } catch (err) {
+                        console.error('Error al añadir ICE candidate encolado:', err)
+                    }
+                }
+                pendingCandidates.current.delete(socketId)
+            }
+        }
+
         // Cuando un nuevo usuario se une, nosotros (como existentes) le hacemos la llamada
         const handleUserJoined = (newSocketId: string) => {
             // Pequeño delay para asegurar que ambos lados están listos
@@ -168,6 +194,8 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
             try {
                 await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
+                await flushIceCandidates(data.fromSocketId, pc)
+                
                 const answer = await pc.createAnswer()
                 await pc.setLocalDescription(answer)
                 socket.emit('webrtc-answer', {
@@ -185,6 +213,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             if (pc) {
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
+                    await flushIceCandidates(data.fromSocketId, pc)
                 } catch (err) {
                     console.error('Error al manejar answer:', err)
                 }
@@ -194,12 +223,16 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         // Recibimos un candidato ICE
         const handleIceCandidate = async (data: { fromSocketId: string, candidate: RTCIceCandidateInit }) => {
             const pc = peerConnections.current.get(data.fromSocketId)
-            if (pc) {
+            if (pc && pc.remoteDescription) {
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
                 } catch (err) {
                     console.error('Error al añadir ICE candidate:', err)
                 }
+            } else {
+                const candidates = pendingCandidates.current.get(data.fromSocketId) || []
+                candidates.push(data.candidate)
+                pendingCandidates.current.set(data.fromSocketId, candidates)
             }
         }
 
