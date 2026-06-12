@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useWebRTC } from '../hooks/useWebRTC'
+import { useAudioVolume } from '../hooks/useAudioVolume'
 import { 
     getRoom, 
     updateRoom, 
@@ -106,6 +107,8 @@ export default function RoomPage() {
         toggleCam,
         toggleScreenShare,
     } = useWebRTC({ socket, roomId })
+
+    const isLocalSpeaking = useAudioVolume(localStream, !isMicOn)
 
     // Host modals
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -213,7 +216,7 @@ export default function RoomPage() {
         if (localVideoRef.current && localStream) {
             localVideoRef.current.srcObject = localStream
         }
-    }, [localStream, isCamOn])
+    }, [localStream, isCamOn, isScreenSharing])
 
     // Polling de seguridad: sincroniza mensajes desde Firestore cada 8 segundos
     // Garantiza que los mensajes siempre aparezcan incluso si el socket falla en Render
@@ -435,14 +438,14 @@ export default function RoomPage() {
                 }`}>
                     
                     {/* Tarjeta del Usuario Local — Video Real */}
-                    <div className="relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border border-slate-200 overflow-hidden shadow-sm transition-all hover:shadow-md">
-                        {localStream && isCamOn ? (
+                    <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isLocalSpeaking ? 'border-4 border-indigo-500 shadow-indigo-500/50 scale-[1.02]' : 'border-slate-200'}`}>
+                        {localStream && (isCamOn || isScreenSharing) ? (
                             <video
                                 ref={localVideoRef}
                                 autoPlay
                                 playsInline
                                 muted
-                                className="absolute inset-0 w-full h-full object-cover mirror-video"
+                                className={`absolute inset-0 w-full h-full object-cover ${!isScreenSharing ? 'mirror-video' : ''}`}
                             />
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
@@ -476,43 +479,7 @@ export default function RoomPage() {
                     {/* Tarjetas de Compañeros Remotos — Video Real WebRTC */}
                     {participants.filter(p => p.uid !== profile?.uid).map(p => {
                         const remote = remoteStreams.find(rs => rs.socketId === p.socketId)
-                        return (
-                            <div key={p.socketId} className="relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border border-slate-200 overflow-hidden shadow-sm transition-all hover:shadow-md">
-                                {remote ? (
-                                    <RemoteVideo stream={remote.stream} />
-                                ) : (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
-                                        <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-emerald-100 border-4 border-white flex items-center justify-center overflow-hidden shadow-sm">
-                                            {p.avatarUrl ? (
-                                                <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="text-emerald-600 text-xl lg:text-3xl font-bold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
-                                            )}
-                                        </div>
-                                        <span className="text-slate-400 text-[10px] lg:text-xs mt-3 flex items-center gap-1.5 font-medium">
-                                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                                            Conectando...
-                                        </span>
-                                    </div>
-                                )}
-
-                                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                                    <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded-full shadow-sm border border-slate-200/50 truncate max-w-[100px] lg:max-w-[150px]">
-                                        {p.displayName || p.username}
-                                    </span>
-                                    {remote && (
-                                        <div className="flex gap-1.5 lg:gap-2">
-                                            <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isMicOn !== false ? 'bg-indigo-600/90 border-indigo-500/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
-                                                {p.isMicOn !== false ? '🎤' : '🔇'}
-                                            </span>
-                                            <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isCamOn !== false ? 'bg-indigo-600/90 border-indigo-500/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
-                                                {p.isCamOn !== false ? '📹' : '❌'}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )
+                        return <RemoteParticipantCard key={p.socketId} participant={p} remoteStream={remote} />
                     })}
 
                 </div>
@@ -809,5 +776,48 @@ function RemoteVideo({ stream }: { stream: MediaStream }) {
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
         />
+    )
+}
+
+// Componente separado para tarjeta de participante remoto (maneja volumen y UI)
+function RemoteParticipantCard({ participant: p, remoteStream }: { participant: Participant, remoteStream?: { stream: MediaStream } }) {
+    const isSpeaking = useAudioVolume(remoteStream?.stream || null, p.isMicOn === false)
+
+    return (
+        <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isSpeaking ? 'border-4 border-indigo-500 shadow-indigo-500/50 scale-[1.02]' : 'border-slate-200'}`}>
+            {remoteStream ? (
+                <RemoteVideo stream={remoteStream.stream} />
+            ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                    <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-emerald-100 border-4 border-white flex items-center justify-center overflow-hidden shadow-sm">
+                        {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-emerald-600 text-xl lg:text-3xl font-bold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
+                        )}
+                    </div>
+                    <span className="text-slate-400 text-[10px] lg:text-xs mt-3 flex items-center gap-1.5 font-medium">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        Conectando...
+                    </span>
+                </div>
+            )}
+
+            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded-full shadow-sm border border-slate-200/50 truncate max-w-[100px] lg:max-w-[150px]">
+                    {p.displayName || p.username}
+                </span>
+                {remoteStream && (
+                    <div className="flex gap-1.5 lg:gap-2">
+                        <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isMicOn !== false ? 'bg-indigo-600/90 border-indigo-500/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
+                            {p.isMicOn !== false ? '🎤' : '🔇'}
+                        </span>
+                        <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isCamOn !== false ? 'bg-indigo-600/90 border-indigo-500/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
+                            {p.isCamOn !== false ? '📹' : '❌'}
+                        </span>
+                    </div>
+                )}
+            </div>
+        </div>
     )
 }

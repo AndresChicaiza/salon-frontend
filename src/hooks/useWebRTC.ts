@@ -271,6 +271,9 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 if (current) {
                     current.getVideoTracks().forEach(t => current.removeTrack(t))
                     current.addTrack(videoTrack)
+                    const newStream = new MediaStream(current.getTracks())
+                    setLocalStream(newStream)
+                    localStreamRef.current = newStream
                 }
             }
         }
@@ -282,6 +285,11 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             stopScreenSharing()
         } else {
             try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                    alert('Tu navegador o dispositivo no soporta compartir pantalla. Asegúrate de estar en una conexión segura (HTTPS) o usar un navegador compatible.')
+                    return
+                }
+
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true })
                 const screenTrack = screenStream.getVideoTracks()[0]
 
@@ -296,6 +304,9 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 if (current) {
                     current.getVideoTracks().forEach(t => current.removeTrack(t))
                     current.addTrack(screenTrack)
+                    const newStream = new MediaStream(current.getTracks())
+                    setLocalStream(newStream)
+                    localStreamRef.current = newStream
                 }
 
                 // Cuando el usuario deja de compartir desde el botón nativo del navegador
@@ -304,8 +315,15 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 }
 
                 setIsScreenSharing(true)
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Error al compartir pantalla:', err)
+                if (err.name === 'NotAllowedError') {
+                    alert('Permiso denegado para compartir pantalla.')
+                } else if (err.name === 'NotFoundError') {
+                    alert('No se encontró una pantalla para compartir.')
+                } else {
+                    alert('No se pudo compartir la pantalla: ' + (err.message || 'Error desconocido.'))
+                }
             }
         }
     }, [isScreenSharing, stopScreenSharing])
