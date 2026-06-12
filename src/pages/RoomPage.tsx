@@ -111,6 +111,16 @@ export default function RoomPage() {
 
     // Debug WebRTC UI state
     const [debugInfo, setDebugInfo] = useState<string>('')
+    const [signalLogs, setSignalLogs] = useState<string[]>([])
+
+    useEffect(() => {
+        const handleLog = (e: any) => {
+            setSignalLogs(prev => [...prev.slice(-4), e.detail])
+        }
+        window.addEventListener('webrtc-log', handleLog)
+        return () => window.removeEventListener('webrtc-log', handleLog)
+    }, [])
+
     useEffect(() => {
         const interval = setInterval(() => {
             if (!peerConnections) return
@@ -569,8 +579,12 @@ export default function RoomPage() {
 
                 {/* DEBUG OVERLAY */}
                 {debugInfo && (
-                    <div className="absolute top-20 left-4 z-50 bg-black/80 text-green-400 text-[10px] font-mono p-3 rounded-lg pointer-events-none whitespace-pre-wrap">
-                        {debugInfo}
+                    <div className="absolute top-20 left-4 z-50 bg-black/80 text-green-400 text-[10px] font-mono p-3 rounded-lg pointer-events-none whitespace-pre-wrap flex flex-col gap-2">
+                        <div>{debugInfo}</div>
+                        <div className="border-t border-green-800 pt-2 text-yellow-400">
+                            Logs:<br/>
+                            {signalLogs.map((log, i) => <div key={i}>&gt; {log}</div>)}
+                        </div>
                     </div>
                 )}
             </div>
