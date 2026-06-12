@@ -159,14 +159,20 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         if (!pc) return
 
         try {
+            window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Creating offer for ${targetSocketId.slice(0,4)}` }))
             const offer = await pc.createOffer()
+            
+            window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting local desc (offer)` }))
             await pc.setLocalDescription(offer)
+            
             socket.emit('webrtc-offer', {
                 targetSocketId,
                 offer,
             })
-        } catch (err) {
+            window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Offer to ${targetSocketId.slice(0,4)}` }))
+        } catch (err: any) {
             console.error('Error al crear offer:', err)
+            window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] callPeer: ${err.message || err}` }))
         }
     }, [socket, createPeerConnection])
 
@@ -196,36 +202,54 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
         // Recibimos una oferta de alguien que ya estaba en la sala
         const handleOffer = async (data: { fromSocketId: string, offer: RTCSessionDescriptionInit }) => {
+            window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[RECV] Offer from ${data.fromSocketId.slice(0,4)}` }))
             const stream = localStreamRef.current
 
             const pc = createPeerConnection(data.fromSocketId, stream)
-            if (!pc) return
+            if (!pc) {
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] No PC created for ${data.fromSocketId.slice(0,4)}` }))
+                return
+            }
 
             try {
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting remote desc (offer)` }))
                 await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
+                
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Flushing ICE candidates` }))
                 await flushIceCandidates(data.fromSocketId, pc)
                 
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Creating answer` }))
                 const answer = await pc.createAnswer()
+                
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting local desc (answer)` }))
                 await pc.setLocalDescription(answer)
+                
                 socket.emit('webrtc-answer', {
                     targetSocketId: data.fromSocketId,
                     answer,
                 })
-            } catch (err) {
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Answer to ${data.fromSocketId.slice(0,4)}` }))
+            } catch (err: any) {
                 console.error('Error al manejar offer:', err)
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] handleOffer: ${err.message || err}` }))
             }
         }
 
         // Recibimos una respuesta a nuestra oferta
         const handleAnswer = async (data: { fromSocketId: string, answer: RTCSessionDescriptionInit }) => {
+            window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[RECV] Answer from ${data.fromSocketId.slice(0,4)}` }))
             const pc = peerConnections.current.get(data.fromSocketId)
             if (pc) {
                 try {
+                    window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting remote desc (answer)` }))
                     await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
                     await flushIceCandidates(data.fromSocketId, pc)
-                } catch (err) {
+                } catch (err: any) {
                     console.error('Error al manejar answer:', err)
+                    window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] handleAnswer: ${err.message || err}` }))
                 }
+            } else {
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] No PC found for answer from ${data.fromSocketId.slice(0,4)}` }))
             }
         }
 
