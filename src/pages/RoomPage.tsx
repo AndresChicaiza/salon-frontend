@@ -106,7 +106,22 @@ export default function RoomPage() {
         toggleMic,
         toggleCam,
         toggleScreenShare,
+        peerConnections,
     } = useWebRTC({ socket, roomId })
+
+    // Debug WebRTC UI state
+    const [debugInfo, setDebugInfo] = useState<string>('')
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (!peerConnections) return
+            let info = 'WebRTC Status:\n'
+            peerConnections.forEach((pc, id) => {
+                info += `Peer [${id.slice(0,4)}]: ICE=${pc.iceConnectionState} | Conn=${pc.connectionState} | Sig=${pc.signalingState}\n`
+            })
+            setDebugInfo(info)
+        }, 1000)
+        return () => clearInterval(interval)
+    }, [peerConnections])
 
     const isLocalSpeaking = useAudioVolume(localStream, !isMicOn)
 
@@ -551,6 +566,13 @@ export default function RoomPage() {
                         )}
                     </button>
                 </div>
+
+                {/* DEBUG OVERLAY */}
+                {debugInfo && (
+                    <div className="absolute top-20 left-4 z-50 bg-black/80 text-green-400 text-[10px] font-mono p-3 rounded-lg pointer-events-none whitespace-pre-wrap">
+                        {debugInfo}
+                    </div>
+                )}
             </div>
 
             {/* Overlay oscuro para el móvil cuando el chat está abierto */}

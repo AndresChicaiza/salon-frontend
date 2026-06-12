@@ -86,15 +86,17 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     }, [])
 
     // ─── 2. Crear RTCPeerConnection hacia un peer remoto ────────────
-    const createPeerConnection = useCallback((targetSocketId: string, stream: MediaStream) => {
+    const createPeerConnection = useCallback((targetSocketId: string, stream: MediaStream | null) => {
         if (!socket) return null
 
         const pc = new RTCPeerConnection(ICE_SERVERS)
 
-        // Agregar nuestras pistas locales a la conexión
-        stream.getTracks().forEach(track => {
-            pc.addTrack(track, stream)
-        })
+        // Agregar nuestras pistas locales a la conexión (si existen)
+        if (stream) {
+            stream.getTracks().forEach(track => {
+                pc.addTrack(track, stream)
+            })
+        }
 
         // Cuando recibimos un candidato ICE, enviarlo al peer remoto
         pc.onicecandidate = (event) => {
@@ -159,7 +161,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     // ─── 4. Iniciar llamada (crear offer) hacia un peer que se unió ─
     const callPeer = useCallback(async (targetSocketId: string) => {
         const stream = localStreamRef.current
-        if (!stream || !socket) return
+        if (!socket) return
 
         const pc = createPeerConnection(targetSocketId, stream)
         if (!pc) return
@@ -203,7 +205,6 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         // Recibimos una oferta de alguien que ya estaba en la sala
         const handleOffer = async (data: { fromSocketId: string, offer: RTCSessionDescriptionInit }) => {
             const stream = localStreamRef.current
-            if (!stream) return
 
             const pc = createPeerConnection(data.fromSocketId, stream)
             if (!pc) return
@@ -401,5 +402,6 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         toggleCam,
         toggleScreenShare,
         removePeer,
+        peerConnections: peerConnections.current,
     }
 }
