@@ -9,8 +9,7 @@ const ICE_SERVERS: RTCConfiguration = {
         {
             urls: [
                 'turn:openrelay.metered.ca:80',
-                'turn:openrelay.metered.ca:443',
-                'turn:openrelay.metered.ca:443?transport=tcp'
+                'turn:openrelay.metered.ca:443'
             ],
             username: 'openrelayproject',
             credential: 'openrelayproject'
@@ -155,10 +154,10 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         const stream = localStreamRef.current
         if (!socket) return
 
-        const pc = createPeerConnection(targetSocketId, stream)
-        if (!pc) return
-
         try {
+            const pc = createPeerConnection(targetSocketId, stream)
+            if (!pc) return
+            
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Creating offer for ${targetSocketId.slice(0,4)}` }))
             const offer = await pc.createOffer()
             
@@ -205,13 +204,13 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[RECV] Offer from ${data.fromSocketId.slice(0,4)}` }))
             const stream = localStreamRef.current
 
-            const pc = createPeerConnection(data.fromSocketId, stream)
-            if (!pc) {
-                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] No PC created for ${data.fromSocketId.slice(0,4)}` }))
-                return
-            }
-
             try {
+                const pc = createPeerConnection(data.fromSocketId, stream)
+                if (!pc) {
+                    window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] No PC created for ${data.fromSocketId.slice(0,4)}` }))
+                    return
+                }
+
                 window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting remote desc (offer)` }))
                 await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
                 
