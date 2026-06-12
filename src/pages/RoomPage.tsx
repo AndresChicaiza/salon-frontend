@@ -109,30 +109,6 @@ export default function RoomPage() {
         peerConnections,
     } = useWebRTC({ socket, roomId })
 
-    // Debug WebRTC UI state
-    const [debugInfo, setDebugInfo] = useState<string>('')
-    const [signalLogs, setSignalLogs] = useState<string[]>([])
-
-    useEffect(() => {
-        const handleLog = (e: any) => {
-            setSignalLogs(prev => [...prev.slice(-4), e.detail])
-        }
-        window.addEventListener('webrtc-log', handleLog)
-        return () => window.removeEventListener('webrtc-log', handleLog)
-    }, [])
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (!peerConnections) return
-            let info = 'WebRTC Status:\n'
-            peerConnections.forEach((pc, id) => {
-                info += `Peer [${id.slice(0,4)}]: ICE=${pc.iceConnectionState} | Conn=${pc.connectionState} | Sig=${pc.signalingState}\n`
-            })
-            setDebugInfo(info)
-        }, 1000)
-        return () => clearInterval(interval)
-    }, [peerConnections])
-
     const isLocalSpeaking = useAudioVolume(localStream, !isMicOn)
 
     // Host modals
