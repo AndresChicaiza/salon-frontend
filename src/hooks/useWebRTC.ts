@@ -94,7 +94,11 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             if (event.candidate) {
                 socket.emit('webrtc-ice-candidate', {
                     targetSocketId,
-                    candidate: event.candidate,
+                    candidate: {
+                        candidate: event.candidate.candidate,
+                        sdpMid: event.candidate.sdpMid,
+                        sdpMLineIndex: event.candidate.sdpMLineIndex
+                    },
                 })
             }
         }
@@ -166,7 +170,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             
             socket.emit('webrtc-offer', {
                 targetSocketId,
-                offer,
+                offer: { type: offer.type, sdp: offer.sdp },
             })
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Offer to ${targetSocketId.slice(0,4)}` }))
         } catch (err: any) {
@@ -225,7 +229,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 
                 socket.emit('webrtc-answer', {
                     targetSocketId: data.fromSocketId,
-                    answer,
+                    answer: { type: answer.type, sdp: answer.sdp },
                 })
                 window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Answer to ${data.fromSocketId.slice(0,4)}` }))
             } catch (err: any) {
