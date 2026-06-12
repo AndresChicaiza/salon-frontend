@@ -92,13 +92,19 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         // Cuando recibimos un candidato ICE, enviarlo al peer remoto
         pc.onicecandidate = (event) => {
             if (event.candidate) {
-                socket.emit('webrtc-ice-candidate', {
-                    targetSocketId,
-                    candidate: {
-                        candidate: event.candidate.candidate,
-                        sdpMid: event.candidate.sdpMid,
-                        sdpMLineIndex: event.candidate.sdpMLineIndex
-                    },
+                // Tunnel WebRTC signaling over chat message
+                socket.emit('send-message', {
+                    roomId,
+                    message: {
+                        type: 'webrtc-ice-candidate',
+                        targetSocketId,
+                        fromSocketId: socket.id,
+                        candidate: {
+                            candidate: event.candidate.candidate,
+                            sdpMid: event.candidate.sdpMid,
+                            sdpMLineIndex: event.candidate.sdpMLineIndex
+                        }
+                    }
                 })
             }
         }
@@ -168,14 +174,17 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting local desc (offer)` }))
             await pc.setLocalDescription(offer)
             
-            socket.emit('webrtc-offer', {
-                targetSocketId,
-                offer: JSON.stringify({ type: offer.type, sdp: offer.sdp }),
+            // Tunnel WebRTC signaling over chat message to bypass backend drops
+            socket.emit('send-message', {
+                roomId,
+                message: {
+                    type: 'webrtc-offer',
+                    targetSocketId,
+                    fromSocketId: socket.id,
+                    offer: JSON.stringify({ type: offer.type, sdp: offer.sdp })
+                }
             })
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Offer to ${targetSocketId.slice(0,4)}` }))
-            
-            // Test emit to verify socket isn't dead
-            socket.emit('send-message', { roomId, message: { senderUsername: 'SYSTEM', text: `TEST_OFFER_SENT_TO_${targetSocketId.slice(0,4)}` } })
         } catch (err: any) {
             console.error('Error al crear offer:', err)
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] callPeer: ${err.message || err}` }))
@@ -232,11 +241,17 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting local desc (answer)` }))
                 await pc.setLocalDescription(answer)
                 
-                socket.emit('webrtc-answer', {
+            // Tunnel WebRTC signaling over chat message
+            socket.emit('send-message', {
+                roomId,
+                message: {
+                    type: 'webrtc-answer',
                     targetSocketId: data.fromSocketId,
-                    answer: JSON.stringify({ type: answer.type, sdp: answer.sdp }),
-                })
-                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Answer to ${data.fromSocketId.slice(0,4)}` }))
+                    fromSocketId: socket.id,
+                    answer: JSON.stringify({ type: answer.type, sdp: answer.sdp })
+                }
+            })
+            window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Answer to ${data.fromSocketId.slice(0,4)}` }))
             } catch (err: any) {
                 console.error('Error al manejar offer:', err)
                 window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] handleOffer: ${err.message || err}` }))
@@ -283,17 +298,26 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             removePeer(socketId)
         }
 
+        // Intercept tunneled WebRTC messages from the chat broadcast
+        const handleNewMessage = (msg: any) => {
+            if (msg && msg.targetSocketId === socket.id) {
+                if (msg.type === 'webrtc-offer') {
+                    handleOffer({ fromSocketId: msg.fromSocketId, offer: msg.offer })
+                } else if (msg.type === 'webrtc-answer') {
+                    handleAnswer({ fromSocketId: msg.fromSocketId, answer: msg.answer })
+                } else if (msg.type === 'webrtc-ice-candidate') {
+                    handleIceCandidate({ fromSocketId: msg.fromSocketId, candidate: msg.candidate })
+                }
+            }
+        }
+
         socket.on('user-joined', handleUserJoined)
-        socket.on('webrtc-offer', handleOffer)
-        socket.on('webrtc-answer', handleAnswer)
-        socket.on('webrtc-ice-candidate', handleIceCandidate)
+        socket.on('new-message', handleNewMessage) // Listen to tunneled WebRTC
         socket.on('user-left', handleUserLeft)
 
         return () => {
             socket.off('user-joined', handleUserJoined)
-            socket.off('webrtc-offer', handleOffer)
-            socket.off('webrtc-answer', handleAnswer)
-            socket.off('webrtc-ice-candidate', handleIceCandidate)
+            socket.off('new-message', handleNewMessage)
             socket.off('user-left', handleUserLeft)
         }
     }, [socket, roomId, callPeer, createPeerConnection, removePeer])

@@ -210,6 +210,7 @@ export default function RoomPage() {
 
             // Recibir mensajes nuevos de otros participantes en tiempo real
             newSocket.on('new-message', (message: ChatMessage) => {
+                if (message && message.type && message.type.startsWith('webrtc-')) return // Ignore tunneled WebRTC
                 setMessages(prev => {
                     if (prev.some(m => m.id === message.id)) return prev
                     return [...prev, message]
