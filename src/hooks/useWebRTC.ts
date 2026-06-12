@@ -170,9 +170,12 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             
             socket.emit('webrtc-offer', {
                 targetSocketId,
-                offer: { type: offer.type, sdp: offer.sdp },
+                offer: JSON.stringify({ type: offer.type, sdp: offer.sdp }),
             })
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Offer to ${targetSocketId.slice(0,4)}` }))
+            
+            // Test emit to verify socket isn't dead
+            socket.emit('send-message', { roomId, message: { senderUsername: 'SYSTEM', text: `TEST_OFFER_SENT_TO_${targetSocketId.slice(0,4)}` } })
         } catch (err: any) {
             console.error('Error al crear offer:', err)
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[ERR] callPeer: ${err.message || err}` }))
@@ -205,7 +208,8 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         }
 
         // Recibimos una oferta de alguien que ya estaba en la sala
-        const handleOffer = async (data: { fromSocketId: string, offer: RTCSessionDescriptionInit }) => {
+        const handleOffer = async (data: { fromSocketId: string, offer: any }) => {
+            let parsedOffer = typeof data.offer === 'string' ? JSON.parse(data.offer) : data.offer;
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[RECV] Offer from ${data.fromSocketId.slice(0,4)}` }))
             const stream = localStreamRef.current
 
@@ -217,7 +221,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 }
 
                 window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting remote desc (offer)` }))
-                await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
+                await pc.setRemoteDescription(new RTCSessionDescription(parsedOffer))
                 
                 window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Flushing ICE candidates` }))
                 await flushIceCandidates(data.fromSocketId, pc)
@@ -230,7 +234,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 
                 socket.emit('webrtc-answer', {
                     targetSocketId: data.fromSocketId,
-                    answer: { type: answer.type, sdp: answer.sdp },
+                    answer: JSON.stringify({ type: answer.type, sdp: answer.sdp }),
                 })
                 window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[SEND] Answer to ${data.fromSocketId.slice(0,4)}` }))
             } catch (err: any) {
@@ -240,13 +244,14 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         }
 
         // Recibimos una respuesta a nuestra oferta
-        const handleAnswer = async (data: { fromSocketId: string, answer: RTCSessionDescriptionInit }) => {
+        const handleAnswer = async (data: { fromSocketId: string, answer: any }) => {
+            let parsedAnswer = typeof data.answer === 'string' ? JSON.parse(data.answer) : data.answer;
             window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[RECV] Answer from ${data.fromSocketId.slice(0,4)}` }))
             const pc = peerConnections.current.get(data.fromSocketId)
             if (pc) {
                 try {
                     window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Setting remote desc (answer)` }))
-                    await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
+                    await pc.setRemoteDescription(new RTCSessionDescription(parsedAnswer))
                     await flushIceCandidates(data.fromSocketId, pc)
                 } catch (err: any) {
                     console.error('Error al manejar answer:', err)
