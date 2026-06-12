@@ -577,16 +577,20 @@ export default function RoomPage() {
                     </button>
                 </div>
 
-                {/* DEBUG OVERLAY */}
-                {debugInfo && (
-                    <div className="absolute top-20 left-4 z-50 bg-black/80 text-green-400 text-[10px] font-mono p-3 rounded-lg pointer-events-none whitespace-pre-wrap flex flex-col gap-2">
-                        <div>{debugInfo}</div>
-                        <div className="border-t border-green-800 pt-2 text-yellow-400">
-                            Logs:<br/>
-                            {signalLogs.map((log, i) => <div key={i}>&gt; {log}</div>)}
-                        </div>
+                {/* OVERLAY DE DEBUG DE WEBRTC - ULTRA VISIBLE */}
+                <div className="absolute top-0 left-0 right-0 z-[9999] bg-black/90 p-4 border-b-4 border-red-600 font-mono text-sm shadow-2xl overflow-y-auto max-h-[50vh]">
+                    <div className="text-white font-bold text-lg mb-2">WebRTC DIAGNOSTICS:</div>
+                    <pre className="text-green-400 whitespace-pre-wrap">{debugInfo}</pre>
+                    <div className="border-t border-gray-600 mt-2 pt-2">
+                        <div className="text-yellow-400 font-bold mb-1">Logs (Últimos 10):</div>
+                        {signalLogs.slice(-10).map((log, i) => (
+                            <div key={i} className={`p-1 mb-1 rounded ${log.includes('[ERR]') ? 'bg-red-800 text-white font-bold' : 'text-gray-300'}`}>
+                                &gt; {log}
+                            </div>
+                        ))}
                     </div>
-                )}
+                </div>
+
             </div>
 
             {/* Overlay oscuro para el móvil cuando el chat está abierto */}

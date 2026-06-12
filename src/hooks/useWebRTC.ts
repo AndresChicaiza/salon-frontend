@@ -185,7 +185,8 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
         const flushIceCandidates = async (socketId: string, pc: RTCPeerConnection) => {
             const candidates = pendingCandidates.current.get(socketId)
-            if (candidates) {
+            if (candidates && candidates.length > 0) {
+                window.dispatchEvent(new CustomEvent('webrtc-log', { detail: `[INFO] Flushing ${candidates.length} ICE candidates` }))
                 for (const candidate of candidates) {
                     try {
                         await pc.addIceCandidate(new RTCIceCandidate(candidate))
@@ -259,7 +260,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         // Recibimos un candidato ICE
         const handleIceCandidate = async (data: { fromSocketId: string, candidate: RTCIceCandidateInit }) => {
             const pc = peerConnections.current.get(data.fromSocketId)
-            if (pc && pc.remoteDescription) {
+            if (pc && pc.remoteDescription && pc.remoteDescription.type) {
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
                 } catch (err) {
