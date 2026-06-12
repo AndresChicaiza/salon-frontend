@@ -1,12 +1,28 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Socket } from 'socket.io-client'
 
-// Servidores STUN/TURN públicos gratuitos para atravesar NATs y firewalls
+// Servidores STUN/TURN públicos para atravesar NATs y firewalls (incluyendo redes móviles 4G/5G)
 const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
+        // STUN Servers (Google)
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
+        // TURN Servers (OpenRelay Metered - Gratuitos para desarrollo)
+        {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        }
     ],
 }
 
