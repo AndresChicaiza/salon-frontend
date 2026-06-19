@@ -381,7 +381,11 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             const videoTrack = camStream.getVideoTracks()[0]
             
             const replacePromises = Array.from(peerConnections.current.values()).map(async pc => {
-                const sender = pc.getSenders().find(s => s.track?.kind === 'video' || s.track === null)
+                const sender = pc.getSenders().find(s => {
+                    if (s.track) return s.track.kind === 'video'
+                    const transceiver = pc.getTransceivers().find(t => t.sender === s)
+                    return transceiver?.receiver?.track?.kind === 'video'
+                })
                 if (sender) {
                     await sender.replaceTrack(videoTrack || null).catch(e => console.error('Error replacing track:', e))
                 }
@@ -424,7 +428,11 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
                 // Reemplazar la pista de video en todas las conexiones peer
                 const replacePromises = Array.from(peerConnections.current.values()).map(async pc => {
-                    const sender = pc.getSenders().find(s => s.track?.kind === 'video' || (s.track === null))
+                    const sender = pc.getSenders().find(s => {
+                        if (s.track) return s.track.kind === 'video'
+                        const transceiver = pc.getTransceivers().find(t => t.sender === s)
+                        return transceiver?.receiver?.track?.kind === 'video'
+                    })
                     if (sender) {
                         await sender.replaceTrack(screenTrack).catch(e => console.error('Error replacing track:', e))
                     }

@@ -54,9 +54,6 @@ export default function RoomPage() {
     const [error, setError] = useState('')
     const [participants, setParticipants] = useState<Participant[]>([])
 
-    // Video refs
-    const localVideoRef = useRef<HTMLVideoElement>(null)
-
     // Socket state
     const [socket, setSocket] = useState<Socket | null>(null)
 
@@ -213,13 +210,6 @@ export default function RoomPage() {
 
     // Scroll reference (movido aquí abajo del useEffect principal para orden)
     const messagesEndRef = useRef<HTMLDivElement>(null)
-
-    // Vincular el stream local al elemento <video> cuando cambie
-    useEffect(() => {
-        if (localVideoRef.current && localStream) {
-            localVideoRef.current.srcObject = localStream
-        }
-    }, [localStream, isCamOn, isScreenSharing])
 
     // Polling de seguridad: sincroniza mensajes desde Firestore cada 8 segundos
     // Garantiza que los mensajes siempre aparezcan incluso si el socket falla en Render
@@ -450,11 +440,9 @@ export default function RoomPage() {
                                 /* Yo estoy compartiendo */
                                 <div className="relative w-full h-full rounded-2xl lg:rounded-3xl bg-slate-900 border-2 border-indigo-500 overflow-hidden shadow-xl shadow-indigo-500/10">
                                     {localStream && (isCamOn || isScreenSharing) ? (
-                                        <video
-                                            ref={localVideoRef}
-                                            autoPlay
-                                            playsInline
-                                            muted
+                                        <LocalVideo
+                                            stream={localStream}
+                                            isScreenSharing={true}
                                             className="absolute inset-0 w-full h-full object-contain bg-slate-900"
                                         />
                                     ) : (
@@ -521,12 +509,10 @@ export default function RoomPage() {
                             {!isLocalScreenSharing && (
                                 <div className={`relative w-[140px] lg:w-full shrink-0 aspect-video rounded-xl lg:rounded-2xl bg-slate-100 border overflow-hidden shadow-sm transition-all ${isLocalSpeaking ? 'border-2 border-emerald-500 shadow-emerald-500/30' : 'border-slate-200'}`}>
                                     {localStream && isCamOn ? (
-                                        <video
-                                            ref={localVideoRef}
-                                            autoPlay
-                                            playsInline
-                                            muted
-                                            className="absolute inset-0 w-full h-full object-cover mirror-video"
+                                        <LocalVideo
+                                            stream={localStream}
+                                            isScreenSharing={false}
+                                            className="absolute inset-0 w-full h-full object-cover"
                                         />
                                     ) : (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
@@ -600,12 +586,10 @@ export default function RoomPage() {
                     {/* Tarjeta del Usuario Local — Video Real */}
                     <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isLocalSpeaking ? 'border-4 border-emerald-500 shadow-emerald-500/50 scale-[1.02]' : 'border-slate-200'}`}>
                         {localStream && (isCamOn || isScreenSharing) ? (
-                            <video
-                                ref={localVideoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className={`absolute inset-0 w-full h-full object-cover ${!isScreenSharing ? 'mirror-video' : ''}`}
+                            <LocalVideo
+                                stream={localStream}
+                                isScreenSharing={isScreenSharing}
+                                className="absolute inset-0 w-full h-full object-cover"
                             />
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
@@ -989,6 +973,27 @@ function RemoteParticipantCard({ participant: p, remoteStream }: { participant: 
                 )}
             </div>
         </div>
+    )
+}
+
+// Componente para mostrar el video local (cámara o pantalla)
+function LocalVideo({ stream, isScreenSharing, className }: { stream: MediaStream, isScreenSharing?: boolean, className?: string }) {
+    const videoRef = useRef<HTMLVideoElement>(null)
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream
+        }
+    }, [stream])
+
+    return (
+        <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`${className} ${!isScreenSharing ? 'mirror-video' : ''}`.trim()}
+        />
     )
 }
 
