@@ -44,6 +44,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     const isTogglingRef = useRef(false)
     // Ref para encolar candidatos ICE antes de que se establezca remoteDescription
     const pendingCandidates = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
+    const audioContextRef = useRef<AudioContext | null>(null)
 
     // ─── 1. Obtener medios locales (cámara + micrófono) ─────────────
     const startLocalStream = useCallback(async () => {
@@ -376,9 +377,10 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             })
         }
 
-        // 2. Restaurar la cámara (si existe)
+        // 2. Restaurar la cámara y audio (si existen)
         if (camStream) {
             const videoTrack = camStream.getVideoTracks()[0]
+            const audioTrack = camStream.getAudioTracks()[0]
             
             const replacePromises = Array.from(peerConnections.current.values()).map(async pc => {
                 const sender = pc.getSenders().find(s => {
@@ -389,11 +391,28 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 if (sender) {
                     await sender.replaceTrack(videoTrack || null).catch(e => console.error('Error replacing track:', e))
                 }
+
+                if (audioTrack) {
+                    const audioSender = pc.getSenders().find(s => {
+                        if (s.track) return s.track.kind === 'audio'
+                        const transceiver = pc.getTransceivers().find(t => t.sender === s)
+                        return transceiver?.receiver?.track?.kind === 'audio'
+                    })
+                    if (audioSender) {
+                        await audioSender.replaceTrack(audioTrack).catch(e => console.error('Error replacing audio track:', e))
+                    }
+                }
             })
             await Promise.all(replacePromises)
 
-            if (currentLocal && videoTrack) {
-                currentLocal.addTrack(videoTrack)
+            if (currentLocal) {
+                if (videoTrack) {
+                    currentLocal.addTrack(videoTrack)
+                }
+                if (audioTrack && !currentLocal.getAudioTracks().includes(audioTrack)) {
+                    currentLocal.getAudioTracks().forEach(t => currentLocal.removeTrack(t))
+                    currentLocal.addTrack(audioTrack)
+                }
             }
         }
 
@@ -402,6 +421,12 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             const newStream = new MediaStream(currentLocal.getTracks())
             setLocalStream(newStream)
             localStreamRef.current = newStream
+        }
+
+        // Cerrar AudioContext si existe
+        if (audioContextRef.current) {
+            audioContextRef.current.close().catch(e => console.error('Error closing AudioContext:', e))
+            audioContextRef.current = null
         }
 
         setIsScreenSharing(false)
@@ -423,10 +448,34 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                     return
                 }
 
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true })
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
                 const screenTrack = screenStream.getVideoTracks()[0]
+                const screenAudioTrack = screenStream.getAudioTracks()[0]
 
-                // Reemplazar la pista de video en todas las conexiones peer
+                let audioTrackToSend: MediaStreamTrack | null = null
+                const originalAudioTrack = cameraStreamRef.current?.getAudioTracks()[0]
+
+                if (screenAudioTrack && originalAudioTrack) {
+                    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+                    const audioContext = new AudioCtx()
+                    const dest = audioContext.createMediaStreamDestination()
+                    
+                    const micSource = audioContext.createMediaStreamSource(new MediaStream([originalAudioTrack]))
+                    const screenSource = audioContext.createMediaStreamSource(new MediaStream([screenAudioTrack]))
+                    
+                    micSource.connect(dest)
+                    screenSource.connect(dest)
+                    audioTrackToSend = dest.stream.getAudioTracks()[0]
+                    
+                    if (audioContextRef.current) {
+                        audioContextRef.current.close().catch(e => console.error('Error closing old AudioContext:', e))
+                    }
+                    audioContextRef.current = audioContext
+                } else if (screenAudioTrack) {
+                    audioTrackToSend = screenAudioTrack
+                }
+
+                // Reemplazar la pista de video (y audio si aplica) en todas las conexiones peer
                 const replacePromises = Array.from(peerConnections.current.values()).map(async pc => {
                     const sender = pc.getSenders().find(s => {
                         if (s.track) return s.track.kind === 'video'
@@ -436,6 +485,17 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                     if (sender) {
                         await sender.replaceTrack(screenTrack).catch(e => console.error('Error replacing track:', e))
                     }
+
+                    if (audioTrackToSend) {
+                        const audioSender = pc.getSenders().find(s => {
+                            if (s.track) return s.track.kind === 'audio'
+                            const transceiver = pc.getTransceivers().find(t => t.sender === s)
+                            return transceiver?.receiver?.track?.kind === 'audio'
+                        })
+                        if (audioSender) {
+                            await audioSender.replaceTrack(audioTrackToSend).catch(e => console.error('Error replacing audio track:', e))
+                        }
+                    }
                 })
                 await Promise.all(replacePromises)
 
@@ -444,6 +504,12 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 if (current) {
                     current.getVideoTracks().forEach(t => current.removeTrack(t))
                     current.addTrack(screenTrack)
+                    
+                    if (audioTrackToSend) {
+                        current.getAudioTracks().forEach(t => current.removeTrack(t))
+                        current.addTrack(audioTrackToSend)
+                    }
+                    
                     const newStream = new MediaStream(current.getTracks())
                     setLocalStream(newStream)
                     localStreamRef.current = newStream

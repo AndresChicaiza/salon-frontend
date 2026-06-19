@@ -912,8 +912,9 @@ function RemoteVideo({ stream }: { stream: MediaStream }) {
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
-        if (videoRef.current) {
+        if (videoRef.current && stream) {
             videoRef.current.srcObject = stream
+            videoRef.current.play().catch(e => console.warn('RemoteVideo play prevented:', e))
         }
     }, [stream])
 
@@ -981,8 +982,9 @@ function LocalVideo({ stream, isScreenSharing, className }: { stream: MediaStrea
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
-        if (videoRef.current) {
+        if (videoRef.current && stream) {
             videoRef.current.srcObject = stream
+            videoRef.current.play().catch(e => console.warn('LocalVideo play prevented:', e))
         }
     }, [stream])
 
@@ -1002,8 +1004,9 @@ function LocalCameraThumb({ stream }: { stream: MediaStream }) {
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
-        if (videoRef.current) {
+        if (videoRef.current && stream) {
             videoRef.current.srcObject = stream
+            videoRef.current.play().catch(e => console.warn('LocalCameraThumb play prevented:', e))
         }
     }, [stream])
 
