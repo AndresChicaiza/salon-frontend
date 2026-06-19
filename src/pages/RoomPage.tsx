@@ -107,7 +107,7 @@ export default function RoomPage() {
         toggleMic,
         toggleCam,
         toggleScreenShare,
-        cameraStreamRef
+        cameraStream
     } = useWebRTC({ socket, roomId })
 
     const isLocalSpeaking = useAudioVolume(localStream, !isMicOn)
@@ -555,8 +555,8 @@ export default function RoomPage() {
                             {/* Si soy yo quien comparte, mi propia cámara como thumbnail */}
                             {isLocalScreenSharing && (
                                 <div className={`relative w-[140px] lg:w-full shrink-0 aspect-video rounded-xl lg:rounded-2xl bg-slate-100 border overflow-hidden shadow-sm transition-all ${isLocalSpeaking ? 'border-2 border-emerald-500 shadow-emerald-500/30' : 'border-slate-200'}`}>
-                                    {cameraStreamRef.current && isCamOn ? (
-                                        <LocalCameraThumb stream={cameraStreamRef.current} />
+                                    {cameraStream && isCamOn ? (
+                                        <LocalCameraThumb stream={cameraStream} />
                                     ) : (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
                                             <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center overflow-hidden">

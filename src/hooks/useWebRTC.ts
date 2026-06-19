@@ -34,6 +34,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     const [isCamOn, setIsCamOn] = useState(true)
     const [isScreenSharing, setIsScreenSharing] = useState(false)
     const [permissionError, setPermissionError] = useState('')
+    const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
 
     // Map de socketId → RTCPeerConnection
     const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map())
@@ -54,6 +55,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             setLocalStream(stream)
             localStreamRef.current = stream
             cameraStreamRef.current = stream
+            setCameraStream(stream)
             return stream
         } catch (err: any) {
             console.error('Error al acceder a cámara/micrófono:', err)
@@ -69,6 +71,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true })
                 setLocalStream(audioOnly)
                 localStreamRef.current = audioOnly
+                setCameraStream(audioOnly)
                 return audioOnly
             } catch {
                 return null
@@ -458,6 +461,6 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         toggleScreenShare,
         removePeer,
         peerConnections: peerConnections.current,
-        cameraStreamRef,
+        cameraStream,
     }
 }
