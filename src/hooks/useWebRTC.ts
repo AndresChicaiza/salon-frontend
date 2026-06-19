@@ -41,6 +41,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     // Referencia al stream de cámara original (para restaurar tras compartir pantalla)
     const cameraStreamRef = useRef<MediaStream | null>(null)
     const localStreamRef = useRef<MediaStream | null>(null)
+    const isTogglingRef = useRef(false)
     // Ref para encolar candidatos ICE antes de que se establezca remoteDescription
     const pendingCandidates = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
 
@@ -363,7 +364,7 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     }, [socket, isCamOn])
 
     // ─── 8. Compartir Pantalla ──────────────────────────────────────
-    const stopScreenSharing = useCallback(() => {
+    const stopScreenSharing = useCallback(async () => {
         const currentLocal = localStreamRef.current
         const camStream = cameraStreamRef.current
 
@@ -379,12 +380,13 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         if (camStream) {
             const videoTrack = camStream.getVideoTracks()[0]
             
-            peerConnections.current.forEach(pc => {
+            const replacePromises = Array.from(peerConnections.current.values()).map(async pc => {
                 const sender = pc.getSenders().find(s => s.track?.kind === 'video' || s.track === null)
                 if (sender) {
-                    sender.replaceTrack(videoTrack || null).catch(e => console.error('Error replacing track:', e))
+                    await sender.replaceTrack(videoTrack || null).catch(e => console.error('Error replacing track:', e))
                 }
             })
+            await Promise.all(replacePromises)
 
             if (currentLocal && videoTrack) {
                 currentLocal.addTrack(videoTrack)
@@ -405,10 +407,13 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
     }, [socket])
 
     const toggleScreenShare = useCallback(async () => {
-        if (isScreenSharing) {
-            stopScreenSharing()
-        } else {
-            try {
+        if (isTogglingRef.current) return;
+        isTogglingRef.current = true;
+
+        try {
+            if (isScreenSharing) {
+                await stopScreenSharing()
+            } else {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
                     alert('Tu navegador o dispositivo no soporta compartir pantalla. Asegúrate de estar en una conexión segura (HTTPS) o usar un navegador compatible.')
                     return
@@ -418,10 +423,13 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 const screenTrack = screenStream.getVideoTracks()[0]
 
                 // Reemplazar la pista de video en todas las conexiones peer
-                peerConnections.current.forEach(pc => {
+                const replacePromises = Array.from(peerConnections.current.values()).map(async pc => {
                     const sender = pc.getSenders().find(s => s.track?.kind === 'video' || (s.track === null))
-                    if (sender) sender.replaceTrack(screenTrack)
+                    if (sender) {
+                        await sender.replaceTrack(screenTrack).catch(e => console.error('Error replacing track:', e))
+                    }
                 })
+                await Promise.all(replacePromises)
 
                 // Actualizar stream local
                 const current = localStreamRef.current
@@ -434,26 +442,34 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 }
 
                 // Cuando el usuario deja de compartir desde el botón nativo del navegador
-                screenTrack.onended = () => {
-                    stopScreenSharing()
+                screenTrack.onended = async () => {
+                    if (isTogglingRef.current) return;
+                    isTogglingRef.current = true;
+                    try {
+                        await stopScreenSharing()
+                    } finally {
+                        isTogglingRef.current = false;
+                    }
                 }
 
                 setIsScreenSharing(true)
                 if (socket) {
                     socket.emit('toggle-screen-share', { state: true })
                 }
-            } catch (err: any) {
-                console.error('Error al compartir pantalla:', err)
-                if (err.name === 'NotAllowedError') {
-                    alert('Permiso denegado para compartir pantalla.')
-                } else if (err.name === 'NotFoundError') {
-                    alert('No se encontró una pantalla para compartir.')
-                } else {
-                    alert('No se pudo compartir la pantalla: ' + (err.message || 'Error desconocido.'))
-                }
             }
+        } catch (err: any) {
+            console.error('Error al compartir pantalla:', err)
+            if (err.name === 'NotAllowedError') {
+                alert('Permiso denegado para compartir pantalla.')
+            } else if (err.name === 'NotFoundError') {
+                alert('No se encontró una pantalla para compartir.')
+            } else {
+                alert('No se pudo compartir la pantalla: ' + (err.message || 'Error desconocido.'))
+            }
+        } finally {
+            isTogglingRef.current = false;
         }
-    }, [isScreenSharing, stopScreenSharing])
+    }, [isScreenSharing, stopScreenSharing, socket])
 
     // ─── 9. Cleanup al desmontar ────────────────────────────────────
     useEffect(() => {
