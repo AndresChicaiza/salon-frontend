@@ -377,7 +377,10 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             }
         }
         setIsScreenSharing(false)
-    }, [])
+        if (socket) {
+            socket.emit('toggle-screen-share', { state: false })
+        }
+    }, [socket])
 
     const toggleScreenShare = useCallback(async () => {
         if (isScreenSharing) {
@@ -414,6 +417,9 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 }
 
                 setIsScreenSharing(true)
+                if (socket) {
+                    socket.emit('toggle-screen-share', { state: true })
+                }
             } catch (err: any) {
                 console.error('Error al compartir pantalla:', err)
                 if (err.name === 'NotAllowedError') {
@@ -452,5 +458,6 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
         toggleScreenShare,
         removePeer,
         peerConnections: peerConnections.current,
+        cameraStreamRef,
     }
 }

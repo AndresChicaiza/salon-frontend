@@ -39,6 +39,7 @@ interface Participant {
     avatarUrl: string
     isMicOn?: boolean
     isCamOn?: boolean
+    isScreenSharing?: boolean
 }
 
 export default function RoomPage() {
@@ -105,7 +106,8 @@ export default function RoomPage() {
         startLocalStream,
         toggleMic,
         toggleCam,
-        toggleScreenShare
+        toggleScreenShare,
+        cameraStreamRef
     } = useWebRTC({ socket, roomId })
 
     const isLocalSpeaking = useAudioVolume(localStream, !isMicOn)
@@ -344,6 +346,13 @@ export default function RoomPage() {
     const remoteParticipants = participants.filter(p => p.uid !== profile?.uid)
     const totalVideoSlots = 1 + remoteParticipants.length // 1 local + remotos
 
+    // Detectar si alguien está compartiendo pantalla (local o remoto)
+    const screenSharingParticipant = participants.find(p => p.isScreenSharing)
+    const isAnyoneScreenSharing = !!screenSharingParticipant || isScreenSharing
+    const isLocalScreenSharing = isScreenSharing
+    // El participante remoto que está compartiendo (si no somos nosotros)
+    const remoteScreenSharer = !isLocalScreenSharing ? screenSharingParticipant : null
+
     return (
         <div className="flex flex-col lg:flex-row h-[100dvh] bg-[#F8F7FA] text-slate-800 font-sans overflow-hidden">
             
@@ -430,13 +439,163 @@ export default function RoomPage() {
                     </div>
                 )}
 
-                {/* Grid de Video/Audio WebRTC Dinámico */}
-                <div className={`flex-1 p-4 lg:p-6 overflow-y-auto grid gap-3 lg:gap-4 items-center content-center mx-auto w-full ${
-                    totalVideoSlots <= 1 ? 'grid-cols-1 max-w-sm sm:max-w-xl' :
-                    totalVideoSlots === 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-4xl' :
-                    totalVideoSlots <= 4 ? 'grid-cols-2 max-w-4xl' :
-                    'grid-cols-2 lg:grid-cols-3 max-w-6xl'
-                }`}>
+                {/* ─── Layout de Video: Normal Grid vs Presenter (Meet-style) ─── */}
+                {isAnyoneScreenSharing ? (
+                    /* ═══ PRESENTER LAYOUT (estilo Google Meet) ═══ */
+                    <div className="flex-1 flex flex-col lg:flex-row overflow-hidden p-3 lg:p-4 gap-3 lg:gap-4">
+                        
+                        {/* PANTALLA PRINCIPAL — El que comparte pantalla */}
+                        <div className="flex-1 min-h-0 min-w-0 relative">
+                            {isLocalScreenSharing ? (
+                                /* Yo estoy compartiendo */
+                                <div className="relative w-full h-full rounded-2xl lg:rounded-3xl bg-slate-900 border-2 border-indigo-500 overflow-hidden shadow-xl shadow-indigo-500/10">
+                                    {localStream && (isCamOn || isScreenSharing) ? (
+                                        <video
+                                            ref={localVideoRef}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            className="absolute inset-0 w-full h-full object-contain bg-slate-900"
+                                        />
+                                    ) : (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
+                                            <span className="text-slate-400 text-sm">Sin vista previa</span>
+                                        </div>
+                                    )}
+                                    <div className="absolute top-3 left-3 flex items-center gap-2">
+                                        <span className="bg-indigo-600 text-white text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                                            🖥️ Presentando
+                                        </span>
+                                    </div>
+                                    <div className="absolute bottom-3 left-3">
+                                        <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded-full shadow-sm border border-slate-200/50">
+                                            {profile?.displayName || profile?.username || 'Tú'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : remoteScreenSharer ? (
+                                /* Un remoto está compartiendo */
+                                (() => {
+                                    const remote = remoteStreams.find(rs => rs.socketId === remoteScreenSharer.socketId)
+                                    return (
+                                        <div className="relative w-full h-full rounded-2xl lg:rounded-3xl bg-slate-900 border-2 border-indigo-500 overflow-hidden shadow-xl shadow-indigo-500/10">
+                                            {remote ? (
+                                                <RemoteVideo stream={remote.stream} />
+                                            ) : (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
+                                                    <div className="w-16 h-16 rounded-full bg-indigo-900/50 flex items-center justify-center overflow-hidden">
+                                                        {remoteScreenSharer.avatarUrl ? (
+                                                            <img src={remoteScreenSharer.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <span className="text-indigo-300 text-xl font-bold">{remoteScreenSharer.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-slate-400 text-xs mt-3 flex items-center gap-1.5">
+                                                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                                                        Conectando presentación...
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="absolute top-3 left-3 flex items-center gap-2">
+                                                <span className="bg-indigo-600 text-white text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                                                    🖥️ Presentando
+                                                </span>
+                                            </div>
+                                            <div className="absolute bottom-3 left-3">
+                                                <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] lg:text-xs font-bold px-3 py-1.5 rounded-full shadow-sm border border-slate-200/50">
+                                                    {remoteScreenSharer.displayName || remoteScreenSharer.username}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )
+                                })()
+                            ) : null}
+                        </div>
+
+                        {/* BARRA LATERAL — Thumbnails de los demás participantes */}
+                        <div className="flex lg:flex-col gap-2 lg:gap-3 lg:w-[200px] xl:w-[220px] shrink-0 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto pb-1 lg:pb-0">
+                            
+                            {/* Mi cámara (thumbnail) — solo si un remoto es el que comparte */}
+                            {!isLocalScreenSharing && (
+                                <div className={`relative w-[140px] lg:w-full shrink-0 aspect-video rounded-xl lg:rounded-2xl bg-slate-100 border overflow-hidden shadow-sm transition-all ${isLocalSpeaking ? 'border-2 border-emerald-500 shadow-emerald-500/30' : 'border-slate-200'}`}>
+                                    {localStream && isCamOn ? (
+                                        <video
+                                            ref={localVideoRef}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            className="absolute inset-0 w-full h-full object-cover mirror-video"
+                                        />
+                                    ) : (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                                            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center overflow-hidden">
+                                                {profile?.avatarUrl ? (
+                                                    <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-indigo-600 text-xs lg:text-sm font-bold">{profile?.displayName?.slice(0, 2).toUpperCase() || 'YO'}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none">
+                                        <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[8px] lg:text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm truncate max-w-[80px]">
+                                            Tú
+                                        </span>
+                                        <div className="flex gap-1">
+                                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] backdrop-blur-md shadow-sm ${isMicOn ? 'bg-indigo-600 text-white' : 'bg-rose-500 text-white'}`}>
+                                                {isMicOn ? '🎤' : '🔇'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Si soy yo quien comparte, mi propia cámara como thumbnail */}
+                            {isLocalScreenSharing && (
+                                <div className={`relative w-[140px] lg:w-full shrink-0 aspect-video rounded-xl lg:rounded-2xl bg-slate-100 border overflow-hidden shadow-sm transition-all ${isLocalSpeaking ? 'border-2 border-emerald-500 shadow-emerald-500/30' : 'border-slate-200'}`}>
+                                    {cameraStreamRef.current && isCamOn ? (
+                                        <LocalCameraThumb stream={cameraStreamRef.current} />
+                                    ) : (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                                            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center overflow-hidden">
+                                                {profile?.avatarUrl ? (
+                                                    <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-indigo-600 text-xs lg:text-sm font-bold">{profile?.displayName?.slice(0, 2).toUpperCase() || 'YO'}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none">
+                                        <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[8px] lg:text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm truncate max-w-[80px]">
+                                            Tú
+                                        </span>
+                                        <div className="flex gap-1">
+                                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] backdrop-blur-md shadow-sm ${isMicOn ? 'bg-indigo-600 text-white' : 'bg-rose-500 text-white'}`}>
+                                                {isMicOn ? '🎤' : '🔇'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Participantes remotos como thumbnails (excluir al que comparte) */}
+                            {participants.filter(p => p.uid !== profile?.uid && p.socketId !== remoteScreenSharer?.socketId).map(p => {
+                                const remote = remoteStreams.find(rs => rs.socketId === p.socketId)
+                                return <RemoteParticipantThumb key={p.socketId} participant={p} remoteStream={remote} />
+                            })}
+                        </div>
+                    </div>
+                ) : (
+                    /* ═══ GRID NORMAL (sin screen share) ═══ */
+                    <div className={`flex-1 p-4 lg:p-6 overflow-y-auto grid gap-3 lg:gap-4 items-center content-center mx-auto w-full ${
+                        totalVideoSlots <= 1 ? 'grid-cols-1 max-w-sm sm:max-w-xl' :
+                        totalVideoSlots === 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-4xl' :
+                        totalVideoSlots <= 4 ? 'grid-cols-2 max-w-4xl' :
+                        'grid-cols-2 lg:grid-cols-3 max-w-6xl'
+                    }`}>
                     
                     {/* Tarjeta del Usuario Local — Video Real */}
                     <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isLocalSpeaking ? 'border-4 border-emerald-500 shadow-emerald-500/50 scale-[1.02]' : 'border-slate-200'}`}>
@@ -484,6 +643,7 @@ export default function RoomPage() {
                     })}
 
                 </div>
+                )}
 
                 {/* Controles de Transmisión AV — Funcionales */}
                 <div className="bg-white border-t border-slate-100 px-3 py-3 lg:px-6 lg:py-5 flex items-center justify-center gap-2 lg:gap-4 shrink-0 flex-wrap shadow-[0_-4px_20px_rgb(0,0,0,0.02)] z-10" role="group" aria-label="Controles de audio y video">
@@ -821,6 +981,60 @@ function RemoteParticipantCard({ participant: p, remoteStream }: { participant: 
                         </span>
                     </div>
                 )}
+            </div>
+        </div>
+    )
+}
+
+// Componente para mostrar la cámara local como thumbnail durante screen sharing
+function LocalCameraThumb({ stream }: { stream: MediaStream }) {
+    const videoRef = useRef<HTMLVideoElement>(null)
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream
+        }
+    }, [stream])
+
+    return (
+        <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute inset-0 w-full h-full object-cover mirror-video"
+        />
+    )
+}
+
+// Componente thumbnail compacto de participante remoto (para presenter layout)
+function RemoteParticipantThumb({ participant: p, remoteStream }: { participant: Participant, remoteStream?: { stream: MediaStream } }) {
+    const isSpeaking = useAudioVolume(remoteStream?.stream || null, p.isMicOn === false)
+
+    return (
+        <div className={`relative w-[140px] lg:w-full shrink-0 aspect-video rounded-xl lg:rounded-2xl bg-slate-100 border overflow-hidden shadow-sm transition-all ${isSpeaking ? 'border-2 border-emerald-500 shadow-emerald-500/30' : 'border-slate-200'}`}>
+            {remoteStream ? (
+                <RemoteVideo stream={remoteStream.stream} />
+            ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                    <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-emerald-100 border-2 border-white flex items-center justify-center overflow-hidden">
+                        {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-emerald-600 text-xs lg:text-sm font-bold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
+                        )}
+                    </div>
+                </div>
+            )}
+            <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none">
+                <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[8px] lg:text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm truncate max-w-[80px]">
+                    {p.displayName || p.username}
+                </span>
+                <div className="flex gap-1">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] backdrop-blur-md shadow-sm ${p.isMicOn !== false ? 'bg-indigo-600 text-white' : 'bg-rose-500 text-white'}`}>
+                        {p.isMicOn !== false ? '🎤' : '🔇'}
+                    </span>
+                </div>
             </div>
         </div>
     )
