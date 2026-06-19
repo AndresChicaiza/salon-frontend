@@ -282,6 +282,7 @@ Ambos intercambian ICE candidates hasta que la conexión se establece
 - **Soporte de Lectores de Pantalla:** Se añadieron atributos \`aria-label\`, \`aria-pressed\` y \`aria-hidden\` a elementos decorativos, logrando altos puntajes en auditorías de accesibilidad (WCAG).
 
 ### Correcciones Críticas (Bugfixes)
+- **Pantalla Negra al Compartir Pantalla:** Se solucionó un error crítico de renderizado (\`ref-sharing\`) al compartir pantalla, encapsulando el ciclo de vida del video en el componente independiente \`<LocalVideo />\`. Además, se fortaleció la identificación segura de emisores WebRTC utilizando la API \`getTransceivers()\`.
 - **Condición de Carrera en WebRTC:** Se corrigió un error donde el servidor enviaba las señales P2P antes de que la cámara terminara de inicializarse. Al forzar la espera con \`await startLocalStream()\`, las conexiones de audio y video son ahora **100% estables** al instante.
 - **Error al Detener Pantalla Compartida:** Se solucionó un problema de "Stale Closure" en el evento \`onended\` de la pista de video, asegurando que si el usuario detiene la transmisión usando la barra nativa del navegador, la cámara se restaure automáticamente sin romper el flujo.
         `,
