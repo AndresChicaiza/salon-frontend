@@ -949,20 +949,26 @@ function RemoteParticipantCard({ participant: p, remoteStream }: { participant: 
 
     return (
         <div className={`relative aspect-video rounded-xl lg:rounded-3xl bg-slate-100 border overflow-hidden shadow-sm transition-all hover:shadow-md ${isSpeaking ? 'border-4 border-emerald-500 shadow-emerald-500/50 scale-[1.02]' : 'border-slate-200'}`}>
-            {remoteStream ? (
+            {remoteStream && p.isCamOn !== false ? (
                 <RemoteVideo stream={remoteStream.stream} />
             ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
-                    <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-emerald-100 border-4 border-white flex items-center justify-center overflow-hidden shadow-sm">
+                    <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-indigo-100 border-4 border-white flex items-center justify-center overflow-hidden shadow-sm">
                         {p.avatarUrl ? (
                             <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
-                            <span className="text-emerald-600 text-xl lg:text-3xl font-bold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
+                            <span className="text-indigo-600 text-xl lg:text-3xl font-bold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
                         )}
                     </div>
                     <span className="text-slate-400 text-[10px] lg:text-xs mt-3 flex items-center gap-1.5 font-medium">
-                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                        Conectando...
+                        {p.isCamOn === false ? (
+                            'Cámara Apagada'
+                        ) : (
+                            <>
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                                Conectando...
+                            </>
+                        )}
                     </span>
                 </div>
             )}
@@ -973,10 +979,10 @@ function RemoteParticipantCard({ participant: p, remoteStream }: { participant: 
                 </span>
                 {remoteStream && (
                     <div className="flex gap-1.5 lg:gap-2">
-                        <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isMicOn !== false ? 'bg-indigo-600/90 border-indigo-500/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
+                        <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isMicOn !== false ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-rose-500 border-rose-400 text-white'}`}>
                             {p.isMicOn !== false ? '🎤' : '🔇'}
                         </span>
-                        <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isCamOn !== false ? 'bg-indigo-600/90 border-indigo-500/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
+                        <span className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-[10px] lg:text-xs backdrop-blur-md shadow-sm border ${p.isCamOn !== false ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-rose-500 border-rose-400 text-white'}`}>
                             {p.isCamOn !== false ? '📹' : '❌'}
                         </span>
                     </div>
@@ -1013,15 +1019,15 @@ function RemoteParticipantThumb({ participant: p, remoteStream }: { participant:
 
     return (
         <div className={`relative w-[140px] lg:w-full shrink-0 aspect-video rounded-xl lg:rounded-2xl bg-slate-100 border overflow-hidden shadow-sm transition-all ${isSpeaking ? 'border-2 border-emerald-500 shadow-emerald-500/30' : 'border-slate-200'}`}>
-            {remoteStream ? (
+            {remoteStream && p.isCamOn !== false ? (
                 <RemoteVideo stream={remoteStream.stream} />
             ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
-                    <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-emerald-100 border-2 border-white flex items-center justify-center overflow-hidden">
+                    <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center overflow-hidden">
                         {p.avatarUrl ? (
                             <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
-                            <span className="text-emerald-600 text-xs lg:text-sm font-bold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
+                            <span className="text-indigo-600 text-xs lg:text-sm font-bold">{p.displayName?.slice(0, 2).toUpperCase() || 'U'}</span>
                         )}
                     </div>
                 </div>

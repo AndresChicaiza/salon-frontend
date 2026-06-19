@@ -54,8 +54,10 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             })
             setLocalStream(stream)
             localStreamRef.current = stream
-            cameraStreamRef.current = stream
-            setCameraStream(stream)
+            
+            const camStream = new MediaStream(stream.getTracks())
+            cameraStreamRef.current = camStream
+            setCameraStream(camStream)
             return stream
         } catch (err: any) {
             console.error('Error al acceder a cámara/micrófono:', err)
@@ -71,7 +73,10 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true })
                 setLocalStream(audioOnly)
                 localStreamRef.current = audioOnly
-                setCameraStream(audioOnly)
+                
+                const camStream = new MediaStream(audioOnly.getTracks())
+                cameraStreamRef.current = camStream
+                setCameraStream(camStream)
                 return audioOnly
             } catch {
                 return null
@@ -359,26 +364,40 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
 
     // ─── 8. Compartir Pantalla ──────────────────────────────────────
     const stopScreenSharing = useCallback(() => {
-        // Restaurar cámara
+        const currentLocal = localStreamRef.current
         const camStream = cameraStreamRef.current
+
+        // 1. Detener la captura de pantalla
+        if (currentLocal) {
+            currentLocal.getVideoTracks().forEach(track => {
+                track.stop()
+                currentLocal.removeTrack(track)
+            })
+        }
+
+        // 2. Restaurar la cámara (si existe)
         if (camStream) {
             const videoTrack = camStream.getVideoTracks()[0]
-            if (videoTrack) {
-                peerConnections.current.forEach(pc => {
-                    const sender = pc.getSenders().find(s => s.track?.kind === 'video')
-                    if (sender) sender.replaceTrack(videoTrack)
-                })
-                // Actualizar stream local
-                const current = localStreamRef.current
-                if (current) {
-                    current.getVideoTracks().forEach(t => current.removeTrack(t))
-                    current.addTrack(videoTrack)
-                    const newStream = new MediaStream(current.getTracks())
-                    setLocalStream(newStream)
-                    localStreamRef.current = newStream
+            
+            peerConnections.current.forEach(pc => {
+                const sender = pc.getSenders().find(s => s.track?.kind === 'video' || s.track === null)
+                if (sender) {
+                    sender.replaceTrack(videoTrack || null).catch(e => console.error('Error replacing track:', e))
                 }
+            })
+
+            if (currentLocal && videoTrack) {
+                currentLocal.addTrack(videoTrack)
             }
         }
+
+        // 3. Actualizar stream local
+        if (currentLocal) {
+            const newStream = new MediaStream(currentLocal.getTracks())
+            setLocalStream(newStream)
+            localStreamRef.current = newStream
+        }
+
         setIsScreenSharing(false)
         if (socket) {
             socket.emit('toggle-screen-share', { state: false })
