@@ -60,6 +60,9 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             const camStream = new MediaStream(stream.getTracks())
             cameraStreamRef.current = camStream
             setCameraStream(camStream)
+            
+            setIsMicOn(true)
+            setIsCamOn(true)
             return stream
         } catch (err: any) {
             console.error('Error al acceder a cámara/micrófono:', err)
@@ -79,8 +82,13 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 const camStream = new MediaStream(audioOnly.getTracks())
                 cameraStreamRef.current = camStream
                 setCameraStream(camStream)
+                
+                setIsMicOn(true)
+                setIsCamOn(false)
                 return audioOnly
             } catch {
+                setIsMicOn(false)
+                setIsCamOn(false)
                 return null
             }
         }
@@ -347,6 +355,22 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
             }
         }
     }, [socket, isMicOn])
+
+    // ─── Sincronización Automática con el Servidor ──────────────────
+    useEffect(() => {
+        if (socket) {
+            const syncState = () => {
+                socket.emit('toggle-media', { type: 'mic', state: isMicOn })
+                socket.emit('toggle-media', { type: 'cam', state: isCamOn })
+                socket.emit('toggle-screen-share', { state: isScreenSharing })
+            }
+            if (socket.connected) {
+                syncState()
+            }
+            socket.on('connect', syncState)
+            return () => { socket.off('connect', syncState) }
+        }
+    }, [socket, isMicOn, isCamOn, isScreenSharing])
 
     // ─── 7. Toggle Cámara ───────────────────────────────────────────
     const toggleCam = useCallback(() => {
