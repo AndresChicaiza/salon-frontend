@@ -451,13 +451,17 @@ export function useWebRTC({ socket, roomId }: UseWebRTCOptions) {
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
                 const screenTrack = screenStream.getVideoTracks()[0]
                 const screenAudioTrack = screenStream.getAudioTracks()[0]
+                
+                console.log('[WebRTC] Pista de audio de pantalla capturada:', !!screenAudioTrack)
 
                 let audioTrackToSend: MediaStreamTrack | null = null
                 const originalAudioTrack = cameraStreamRef.current?.getAudioTracks()[0]
 
                 if (screenAudioTrack && originalAudioTrack) {
+                    console.log('[WebRTC] Mezclando audio de micrófono y pantalla...')
                     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
                     const audioContext = new AudioCtx()
+                    await audioContext.resume() // Forzar inicio en navegadores estrictos
                     const dest = audioContext.createMediaStreamDestination()
                     
                     const micSource = audioContext.createMediaStreamSource(new MediaStream([originalAudioTrack]))
